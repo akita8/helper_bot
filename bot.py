@@ -89,6 +89,13 @@ async def bottalist(chat, match):
             chat.reply(UNSET_BOSS_TEXT)
 
 
+@bot.command(r'/unbotta')
+async def joke(chat, match):
+    async with bot.session.get('http://ron-swanson-quotes.herokuapp.com/v2/quotes') as s:
+        quote = await s.json()
+        await chat.reply(quote[0])
+
+
 @bot.command(r'/botta')
 @bot.command(fr'/botta@{bot.name}')
 async def botta(chat, match):
