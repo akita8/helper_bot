@@ -103,13 +103,14 @@ async def botta(chat, match):
     if group:
         sender = chat.sender['username']
         msg = chat.message['text'].split(' ')
+        success_text = f'{sender} ha dato la botta!'
         boss_list = await redis.hgetall(f'boss:{group}')
         if boss_list:
             if sender not in await redis.smembers(group):
                 return await chat.reply('Uè pistola! Sei nella chat sbagliata!')
             if len(msg) == 1:
                 await redis.hset(f'boss:{group}', sender, 'ok')
-                return await chat.reply(f'{sender} ha dato la botta!')
+                return await chat.reply(success_text)
             elif len(msg) == 2:
                 try:
                     datetime.strptime(msg[1].replace('.', ':'), '%H:%M')
@@ -121,6 +122,9 @@ async def botta(chat, match):
                     if sender in admin_list and msg[1] in boss_list:
                         await redis.hset(f'boss:{group}', msg[1], 'ok')
                         return await chat.reply(f'{msg[1]} ha dato la botta!')
+                    elif len(msg[1]) == 1:
+                        await redis.hset(f'boss:{group}', sender, msg[1])
+                        return await chat.reply(success_text)
                     return await chat.reply('Errore!\nOrario invalido!')
             else:
                 return await chat.reply(f'Errore!\nSintassi corretta: /botta@{bot.name} orario_botta(opzionale)')
