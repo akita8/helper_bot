@@ -1,3 +1,4 @@
-
-token.txt
+venv
+env
 .idea
+*.ini
