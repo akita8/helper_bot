@@ -11,7 +11,7 @@ from aiotg import Bot
 
 
 config = configparser.ConfigParser()
-config.read('test_config.ini')
+config.read('config.ini')
 
 bot = Bot(config['BOT']['token'], name=config['BOT']['name'])
 redis = None
@@ -30,19 +30,18 @@ def check_group(name):
     return False
 
 
-async def is_allowed_member(username):
-    for g in ALLOWED_GROUPS:
+async def is_member(username, groups=ALLOWED_GROUPS):
+    for g in groups:
         if await redis.sismember(g, username):
             return g
-    return None
 
 
 async def get_group(command, chat, private_command=''):
     if command == private_command and not chat.is_group():
-        group = await is_allowed_member(chat.sender['username'])
+        group = await is_member(chat.sender['username'])
         if not group:
-            await chat.reply('Errore!\nNon sei in nessun gruppo scalata!')
-            return None
+            await chat.reply('Questo è un bot per uso privato mi dispiace non sei autorizzato')
+            return
     else:
         group = check_group(chat.message['chat']['title'])
     return group
@@ -50,18 +49,17 @@ async def get_group(command, chat, private_command=''):
 
 @bot.command(fr'/setboss@{bot.name}')
 async def setboss(chat, match):
-    msg = chat.message['text'].split(' ')
-    if len(msg) != 3 or msg[1].lower() not in ('titano', 'fenice'):
-        return await chat.reply(UNSET_BOSS_TEXT)
-    try:
-        datetime.strptime(msg[2].replace('.', ':'), '%H:%M')
-    except ValueError:
-        return await chat.reply('Errore!\nOrario invalido!')
-    group = check_group(chat.message['chat']['title'])
+    group = await get_group(match.group(0), chat)
     if group:
-        async with bot.session.get(GROUP_URL+group) as s:
-            group_members = await s.json()
-        fields = {**{v['nickname']: "" for v in group_members['res']}, **{"boss": msg[1], "deadline": msg[2]}}
+        msg = chat.message['text'].split(' ')
+        if len(msg) != 3 or msg[1].lower() not in ('titano', 'fenice'):
+            return await chat.reply(f'Errore!\nSintassi corretta: /setboss@{bot.name} titano(o fenice) deadline')
+        try:
+            datetime.strptime(msg[2].replace('.', ':'), '%H:%M')
+        except ValueError:
+            return await chat.reply('Errore!\nOrario invalido!')
+        group_members = await redis.smembers(group)
+        fields = {**{member: "" for member in group_members}, **{"boss": msg[1], "deadline": msg[2]}}
         await redis.hmset_dict(f'boss:{group}', fields)
         return await chat.reply(f'Successo!\nHai impostato una nuova scalata!\nBoss: {msg[1]}\nDeadline: {msg[2]}')
 
@@ -70,6 +68,7 @@ async def setboss(chat, match):
 @bot.command(fr'/bottalist@{bot.name}')
 @bot.command(fr'/bottalistag@{bot.name}')
 async def bottalist(chat, match):
+    #  print(await chat.get_chat_administrators())
     group = await get_group(match.group(0), chat, '/bottalist')
     if group:
         rv = await redis.hgetall(f'boss:{group}')
@@ -97,7 +96,10 @@ async def botta(chat, match):
     if group:
         sender = chat.sender['username']
         msg = chat.message['text'].split(' ')
-        if await redis.hgetall(f'boss:{group}'):
+        boss_list = await redis.hgetall(f'boss:{group}')
+        if boss_list:
+            if sender not in boss_list:
+                return await chat.reply('Uè pistola! Sei nella chat sbagliata!')
             if len(msg) == 1:
                 await redis.hset(f'boss:{group}', sender, 'ok')
                 return await chat.reply(f'{sender} ha dato la botta!')
@@ -107,6 +109,11 @@ async def botta(chat, match):
                     await redis.hset(f'boss:{group}', sender, msg[1])
                     return await chat.reply(f'{sender} darà la botta alle {msg[1]}!')
                 except ValueError:
+                    admin_list_raw = await chat.get_chat_administrators()
+                    admin_list = [admin['user']['username'] for admin in admin_list_raw['result']]
+                    if sender in admin_list and msg[1] in boss_list:
+                        await redis.hset(f'boss:{group}', msg[1], 'ok')
+                        return await chat.reply(f'{msg[1]} ha dato la botta!')
                     return await chat.reply('Errore!\nOrario invalido!')
             else:
                 return await chat.reply(f'Errore!\nSintassi corretta: /botta@{bot.name} orario_botta(opzionale)')
@@ -130,7 +137,7 @@ async def update_group_members():
             for member in group_members['res']:
                 await redis.sadd(group, member['nickname'])
         logger.info('members list updated sleep for 6 hours')
-        await asyncio.sleep(60*6)
+        await asyncio.sleep(60*60*6)
 
 
 if __name__ == '__main__':
