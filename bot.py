@@ -10,13 +10,17 @@ import emoji
 from aiotg import Bot
 
 
-config = configparser.read('config.ini')
+config = configparser.ConfigParser()
+config.read('test_config.ini')
 
 bot = Bot(config['BOT']['token'], name=config['BOT']['name'])
 redis = None
 
+logger = logging.getLogger('helper_bot')
+
 ALLOWED_GROUPS = config['BOT']['allowed groups'].split(',')
 GROUP_URL = 'http://fenixweb.net:3300/api/v1/team/'
+UNSET_BOSS_TEXT = f'Errore!\nNon ho trovato boss impostati --> /setboss@{bot.name}.'
 
 
 def check_group(name):
@@ -27,18 +31,17 @@ def check_group(name):
 
 
 async def is_allowed_member(username):
-    keys = await redis.keys('boss:*')
-    for key in keys:
-        if username in await redis.hgetall(key):
-            return key.split(':')[1]
+    for g in ALLOWED_GROUPS:
+        if await redis.sismember(g, username):
+            return g
     return None
 
 
-async def get_group(command, private, chat):
-    if command == private and not chat.is_group():
+async def get_group(command, chat, private_command=''):
+    if command == private_command and not chat.is_group():
         group = await is_allowed_member(chat.sender['username'])
         if not group:
-            await chat.reply('Errore!\nNon sei in nessuno gruppo scalata!')
+            await chat.reply('Errore!\nNon sei in nessun gruppo scalata!')
             return None
     else:
         group = check_group(chat.message['chat']['title'])
@@ -49,7 +52,7 @@ async def get_group(command, private, chat):
 async def setboss(chat, match):
     msg = chat.message['text'].split(' ')
     if len(msg) != 3 or msg[1].lower() not in ('titano', 'fenice'):
-        return await chat.reply('Errore!\nSintassi corretta: /setboss@steephighe_bot boss deadline')
+        return await chat.reply(UNSET_BOSS_TEXT)
     try:
         datetime.strptime(msg[2].replace('.', ':'), '%H:%M')
     except ValueError:
@@ -67,7 +70,7 @@ async def setboss(chat, match):
 @bot.command(fr'/bottalist@{bot.name}')
 @bot.command(fr'/bottalistag@{bot.name}')
 async def bottalist(chat, match):
-    group = await get_group(match.group(0), '/bottalist', chat)
+    group = await get_group(match.group(0), chat, '/bottalist')
     if group:
         rv = await redis.hgetall(f'boss:{group}')
         if rv:
@@ -84,14 +87,13 @@ async def bottalist(chat, match):
                     formatted += f'{username}: {em}\n'
             return await chat.send_text(formatted)
         else:
-            chat.reply('Errore!\nNon ho trovato boss impostati --> /setboss@steephighe_bot.')
+            chat.reply(UNSET_BOSS_TEXT)
 
 
 @bot.command(r'/botta')
 @bot.command(fr'/botta@{bot.name}')
 async def botta(chat, match):
-    print(chat.message)
-    group = await get_group(match.group(0), '/botta', chat)
+    group = await get_group(match.group(0), chat, '/botta')
     if group:
         sender = chat.sender['username']
         msg = chat.message['text'].split(' ')
@@ -107,25 +109,28 @@ async def botta(chat, match):
                 except ValueError:
                     return await chat.reply('Errore!\nOrario invalido!')
             else:
-                return await chat.reply('Errore!\nSintassi corretta: /botta@steephighe_bot orario_botta(opzionale)')
+                return await chat.reply(f'Errore!\nSintassi corretta: /botta@{bot.name} orario_botta(opzionale)')
         else:
-            chat.reply('Errore!\nNon ho trovato boss impostati --> /setboss@steephighe_bot.')
+            chat.reply(UNSET_BOSS_TEXT)
 
 
 async def redis_connection():
     global redis
+    logger.info('creating redis connection')
     redis = await aioredis.create_redis(('localhost', 6379), encoding="utf-8")
 
 
 async def update_group_members():
     await asyncio.sleep(0.01)
+    logger.info('starting members update coro')
     while True:
         for group in ALLOWED_GROUPS:
             async with bot.session.get(GROUP_URL+group) as s:
                 group_members = await s.json()
-            fields = {v['nickname']: "" for v in group_members['res']}
-            await redis.hmset_dict(f'boss:{group}', fields)
-        await asyncio.sleep(10)
+            for member in group_members['res']:
+                await redis.sadd(group, member['nickname'])
+        logger.info('members list updated sleep for 6 hours')
+        await asyncio.sleep(60*6)
 
 
 if __name__ == '__main__':
@@ -135,7 +140,7 @@ if __name__ == '__main__':
     try:
         loop.run_until_complete(asyncio.gather(
             redis_connection(),
-            #  update_group_members(),
+            update_group_members(),
             bot.loop()
         ))
     except KeyboardInterrupt:
