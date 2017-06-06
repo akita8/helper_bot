@@ -98,7 +98,7 @@ async def botta(chat, match):
         msg = chat.message['text'].split(' ')
         boss_list = await redis.hgetall(f'boss:{group}')
         if boss_list:
-            if sender not in boss_list:
+            if sender not in await redis.smembers(group):
                 return await chat.reply('Uè pistola! Sei nella chat sbagliata!')
             if len(msg) == 1:
                 await redis.hset(f'boss:{group}', sender, 'ok')
