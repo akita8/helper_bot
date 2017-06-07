@@ -1,7 +1,9 @@
 import asyncio
 import configparser
+import functools
 import logging
 import os
+import signal
 
 from datetime import datetime
 
@@ -69,9 +71,9 @@ async def setboss(chat, match):
         return await chat.reply(f'Successo!\nHai impostato una nuova scalata!\nBoss: {msg[1]}\nDeadline: {msg[2]}')
 
 
-@bot.command(r'/bottalist')
-@bot.command(fr'/bottalist@{bot.name}')
-@bot.command(fr'/bottalistag@{bot.name}')
+@bot.command(r'/listabotta')
+@bot.command(fr'/listabotta@{bot.name}')
+@bot.command(fr'/listabottatag@{bot.name}')
 async def bottalist(chat, match):
     #  print(await chat.get_chat_administrators())
     group = await get_group(match.group(0), chat, '/bottalist')
@@ -137,10 +139,30 @@ async def botta(chat, match):
             chat.reply(UNSET_BOSS_TEXT)
 
 
-async def redis_connection():
+def clean_shutdown(signame, loop):
+    logger.warning(f'{signame} recived, stopping!')
+    for t in asyncio.Task.all_tasks():
+        t.cancel()
+    loop.create_task(stop_loop(loop))
+
+
+async def stop_loop(loop):
+    await asyncio.sleep(0.05)
+    loop.stop()
+
+
+async def db():
     global redis
     logger.info('creating redis connection')
     redis = await aioredis.create_redis(('localhost', 6379), encoding="utf-8")
+
+
+async def bot_coro():
+    await asyncio.sleep(0.01)
+    try:
+        await bot.loop()
+    except asyncio.CancelledError:
+        logger.warning('stopped')
 
 
 async def update_objects_name():
@@ -149,27 +171,36 @@ async def update_objects_name():
 
 async def update_group_members():
     await asyncio.sleep(0.01)
-    logger.info('starting members update coro')
-    while True:
-        for group in ALLOWED_GROUPS:
-            async with bot.session.get(GROUP_URL+group) as s:
-                group_members = await s.json()
-            for member in group_members['res']:
-                await redis.sadd(group, member['nickname'])
-        logger.info('members list updated sleep for 6 hours')
-        await asyncio.sleep(60*60*6)
-
+    sleep_time = 60*60*6
+    try:
+        while True:
+            for group in ALLOWED_GROUPS:
+                await redis.delete(group)
+                async with bot.session.get(GROUP_URL+group) as s:
+                    group_members = await s.json()
+                for member in group_members['res']:
+                    await redis.sadd(group, member['nickname'])
+            logger.info(f'db updated now sleeping for {sleep_time}s')
+            await asyncio.sleep(sleep_time)
+    except asyncio.CancelledError:
+        logger.warning('stopped')
 
 if __name__ == '__main__':
     logging.basicConfig(
-        format="%(asctime) [%(levelname)s] %(funcName)s: %(message)s",
+        format='%(asctime)s %(name)-12s %(levelname)-8s %(funcName)s:%(message)s',
         level=logging.INFO)
     loop = asyncio.get_event_loop()
+    for signame in ('SIGINT', 'SIGTERM'):
+        loop.add_signal_handler(getattr(signal, signame),
+                                functools.partial(clean_shutdown, signame, loop))
+    logger.info(f"pid {os.getpid()}: send SIGINT or SIGTERM to exit.")
+
+    coroutines = [db, bot_coro, update_group_members]
+    for coro in coroutines:
+        loop.create_task(coro())
+
     try:
-        loop.run_until_complete(asyncio.gather(
-            redis_connection(),
-            update_group_members(),
-            bot.loop()
-        ))
-    except KeyboardInterrupt:
-        bot.stop()
+        logger.info('starting event loop ')
+        loop.run_forever()
+    finally:
+        loop.close()
