@@ -1,6 +1,7 @@
 import asyncio
 import configparser
 import logging
+import os
 
 from datetime import datetime
 
@@ -10,13 +11,17 @@ import emoji
 from aiotg import Bot
 
 
+logger = logging.getLogger('helper_bot')
+
 config = configparser.ConfigParser()
-config.read('config.ini')
+try:
+    config.read('config.ini') or config.read(os.environ['CONFIG_FILE'])
+except KeyError:
+    logger.error('config file NOT FOUND')
+    exit()
 
 bot = Bot(config['BOT']['token'], name=config['BOT']['name'])
 redis = None
-
-logger = logging.getLogger('helper_bot')
 
 ALLOWED_GROUPS = config['BOT']['allowed groups'].split(',')
 GROUP_URL = 'http://fenixweb.net:3300/api/v1/team/'
@@ -138,6 +143,10 @@ async def redis_connection():
     redis = await aioredis.create_redis(('localhost', 6379), encoding="utf-8")
 
 
+async def update_objects_name():
+    pass
+
+
 async def update_group_members():
     await asyncio.sleep(0.01)
     logger.info('starting members update coro')
@@ -152,8 +161,9 @@ async def update_group_members():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-
+    logging.basicConfig(
+        format="%(asctime) [%(levelname)s] %(funcName)s: %(message)s",
+        level=logging.INFO)
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(asyncio.gather(
