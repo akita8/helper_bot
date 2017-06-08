@@ -25,6 +25,7 @@ except KeyError:
 bot = Bot(config['BOT']['token'], name=config['BOT']['name'])
 redis = None
 
+STARTUP_OFFSET = 1  # offset to allow the redis coro to establish the connection
 ALLOWED_GROUPS = config['BOT']['allowed groups'].split(',')
 GROUP_URL = 'http://fenixweb.net:3300/api/v1/team/'
 UNSET_BOSS_TEXT = f'Errore!\nNon ho trovato boss impostati --> /setboss@{bot.name}.'
@@ -37,7 +38,8 @@ def check_group(name):
     return False
 
 
-async def is_member(username, groups=ALLOWED_GROUPS):
+async def is_member(username, group=None):
+    groups = [group] if group else ALLOWED_GROUPS
     for g in groups:
         if await redis.sismember(g, username):
             return g
@@ -74,9 +76,8 @@ async def setboss(chat, match):
 @bot.command(r'/listabotta')
 @bot.command(fr'/listabotta@{bot.name}')
 @bot.command(fr'/listabottatag@{bot.name}')
-async def bottalist(chat, match):
-    #  print(await chat.get_chat_administrators())
-    group = await get_group(match.group(0), chat, '/bottalist')
+async def listabotta(chat, match):
+    group = await get_group(match.group(0), chat, '/listabotta')
     if group:
         rv = await redis.hgetall(f'boss:{group}')
         if rv:
@@ -87,11 +88,14 @@ async def bottalist(chat, match):
             positive = emoji.emojize(':white_check_mark:', use_aliases=True)
             for username, status in rv.items():
                 em = positive if status == 'ok' else status if status else negative
-                if match.group(0) == f'/bottalistag@{bot.name}':
+                if match.group(0) == f'/listabottatag@{bot.name}':
                     formatted += f'@{username}: {em}\n' if not status else f'{username}: {em}\n'
                 else:
-                    formatted += f'{username}: {em}\n'
-            return await chat.send_text(formatted)
+                    if len(em) > 1:
+                        formatted += f'*{username}*: {em}\n'
+                    else:
+                        formatted += f'{username}: {em}\n'
+            return await chat.send_text(formatted, parse_mode='Markdown')
         else:
             chat.reply(UNSET_BOSS_TEXT)
 
@@ -139,6 +143,20 @@ async def botta(chat, match):
             chat.reply(UNSET_BOSS_TEXT)
 
 
+def coro_setup(func):
+    async def coro_wrapper(*args, **kwargs):
+        await asyncio.sleep(STARTUP_OFFSET)
+        logger.info(f'{func.__name__} started!')
+        try:
+            if asyncio.iscoroutine(func):
+                await func
+            else:
+                await func(*args, **kwargs)
+        except asyncio.CancelledError:
+            logger.info(f'{func.__name__} stopped!')
+    return coro_wrapper
+
+
 def clean_shutdown(signame, loop):
     logger.warning(f'{signame} recived, stopping!')
     for t in asyncio.Task.all_tasks():
@@ -157,33 +175,24 @@ async def db():
     redis = await aioredis.create_redis(('localhost', 6379), encoding="utf-8")
 
 
-async def bot_coro():
-    await asyncio.sleep(0.01)
-    try:
-        await bot.loop()
-    except asyncio.CancelledError:
-        logger.warning('stopped')
-
-
+@coro_setup
 async def update_objects_name():
     pass
 
 
+@coro_setup
 async def update_group_members():
-    await asyncio.sleep(0.01)
-    sleep_time = 60*60*6
-    try:
-        while True:
-            for group in ALLOWED_GROUPS:
-                await redis.delete(group)
-                async with bot.session.get(GROUP_URL+group) as s:
-                    group_members = await s.json()
-                for member in group_members['res']:
-                    await redis.sadd(group, member['nickname'])
-            logger.info(f'db updated now sleeping for {sleep_time}s')
-            await asyncio.sleep(sleep_time)
-    except asyncio.CancelledError:
-        logger.warning('stopped')
+    sleep_time = 3600
+    while True:
+        for group in ALLOWED_GROUPS:
+            await redis.delete(group)
+            async with bot.session.get(GROUP_URL+group) as s:
+                group_members = await s.json()
+            for member in group_members['res']:
+                await redis.sadd(group, member['nickname'])
+        logger.info(f'db updated now sleeping for {sleep_time}s')
+        await asyncio.sleep(sleep_time)
+
 
 if __name__ == '__main__':
     logging.basicConfig(
@@ -195,7 +204,7 @@ if __name__ == '__main__':
                                 functools.partial(clean_shutdown, signame, loop))
     logger.info(f"pid {os.getpid()}: send SIGINT or SIGTERM to exit.")
 
-    coroutines = [db, bot_coro, update_group_members]
+    coroutines = [db, coro_setup(bot.loop()), update_group_members]
     for coro in coroutines:
         loop.create_task(coro())
 
