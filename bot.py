@@ -225,7 +225,7 @@ async def update_group_members():
 if __name__ == '__main__':
     logging.basicConfig(
         format='%(asctime)s %(name)-12s %(levelname)-8s %(funcName)s:%(message)s',
-        level=logging.DEBUG)
+        level=logging.INFO)
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),
