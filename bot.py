@@ -143,7 +143,16 @@ async def botta(chat, match):
             chat.reply(UNSET_BOSS_TEXT)
 
 
+@bot.command(r'^Attenzione! Appena messo piede nella stanza')
+async def namesolver(chat, match):
+    msg = chat.message['text'].split('\n')[1].replace(' ', '')
+    ris = await redis.hget('namesolver', msg)
+    solutions = '\n'.join(ris.split(','))
+    await chat.reply(f"Le possibili soluzioni sono:\n{solutions}")
+
+
 def coro_setup(func):
+    @functools.wraps(func)
     async def coro_wrapper(*args, **kwargs):
         await asyncio.sleep(STARTUP_OFFSET)
         logger.info(f'{func.__name__} started!')
@@ -176,8 +185,28 @@ async def db():
 
 
 @coro_setup
-async def update_objects_name():
-    pass
+async def update_items_name():
+    sleep_time = 3600*12
+    while True:
+        async with bot.session.get('http://fenixweb.net:3300/api/v1/items') as s:
+            items = await s.json()
+        ris = {}
+        for item in items['res']:
+            incomplete_name = ''
+            name = item['name']
+            for i, char in enumerate(name):
+                if i == 0 or i == len(name)-1:
+                    incomplete_name += char
+                elif char == ' ':
+                    incomplete_name += '-'
+                else:
+                    incomplete_name += '_'
+            if incomplete_name not in ris:
+                ris[incomplete_name] = name
+            else:
+                ris[incomplete_name] += ',' + name
+        await redis.hmset_dict('namesolver', ris)
+        await asyncio.sleep(sleep_time)
 
 
 @coro_setup
@@ -190,21 +219,24 @@ async def update_group_members():
                 group_members = await s.json()
             for member in group_members['res']:
                 await redis.sadd(group, member['nickname'])
-        logger.info(f'db updated now sleeping for {sleep_time}s')
         await asyncio.sleep(sleep_time)
 
 
 if __name__ == '__main__':
     logging.basicConfig(
         format='%(asctime)s %(name)-12s %(levelname)-8s %(funcName)s:%(message)s',
-        level=logging.INFO)
+        level=logging.DEBUG)
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),
                                 functools.partial(clean_shutdown, signame, loop))
     logger.info(f"pid {os.getpid()}: send SIGINT or SIGTERM to exit.")
 
-    coroutines = [db, coro_setup(bot.loop()), update_group_members]
+    coroutines = [
+        db,
+        coro_setup(bot.loop()),
+        update_group_members,
+        update_items_name]
     for coro in coroutines:
         loop.create_task(coro())
 
