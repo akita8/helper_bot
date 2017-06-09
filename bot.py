@@ -28,7 +28,9 @@ redis = None
 STARTUP_OFFSET = 1  # offset to allow the redis coro to establish the connection
 ALLOWED_GROUPS = config['BOT']['allowed groups'].split(',')
 GROUP_URL = 'http://fenixweb.net:3300/api/v1/team/'
-UNSET_BOSS_TEXT = f'Errore!\nNon ho trovato boss impostati --> /setboss@{bot.name}.'
+UNSET_BOSS_TEXT = f'Errore!\nNon ho trovato boss impostati --> /setboss o /setboss@{bot.name}.'
+with open('hidden_items.txt') as f:
+    HIDDEN_ITEMS_NAMES = f.read().split('\n')
 
 
 def check_group(name):
@@ -56,6 +58,7 @@ async def get_group(command, chat, private_command=''):
     return group
 
 
+@bot.command(r'/setboss')
 @bot.command(fr'/setboss@{bot.name}')
 async def setboss(chat, match):
     group = await get_group(match.group(0), chat)
@@ -74,6 +77,7 @@ async def setboss(chat, match):
 
 
 @bot.command(r'/listabotta')
+@bot.command(r'/listabottatag')
 @bot.command(fr'/listabotta@{bot.name}')
 @bot.command(fr'/listabottatag@{bot.name}')
 async def listabotta(chat, match):
@@ -88,23 +92,17 @@ async def listabotta(chat, match):
             positive = emoji.emojize(':white_check_mark:', use_aliases=True)
             for username, status in rv.items():
                 em = positive if status == 'ok' else status if status else negative
-                if match.group(0) == f'/listabottatag@{bot.name}':
-                    formatted += f'@{username}: {em}\n' if not status else f'{username}: {em}\n'
+                if len(em) > 1:
+                    warning = emoji.emojize(':warning:', use_aliases=True)
+                    formatted += warning + f' *{username}*: {em}\n'
                 else:
-                    if len(em) > 1:
-                        formatted += f'*{username}*: {em}\n'
-                    else:
-                        formatted += f'{username}: {em}\n'
+                    line = f'{username}: {em}\n'
+                    if 'listabottatag' in match.group(0):
+                        line = '@' + line
+                    formatted += line
             return await chat.send_text(formatted, parse_mode='Markdown')
         else:
             chat.reply(UNSET_BOSS_TEXT)
-
-
-@bot.command(r'/unbotta')
-async def joke(chat, match):
-    async with bot.session.get('http://ron-swanson-quotes.herokuapp.com/v2/quotes') as s:
-        quote = await s.json()
-        await chat.reply(quote[0])
 
 
 @bot.command(r'/botta')
@@ -193,9 +191,9 @@ async def update_items_name():
         async with bot.session.get('http://fenixweb.net:3300/api/v1/items') as s:
             items = await s.json()
         ris = {}
-        for item in items['res']:
+        items_names = [item['name'] for item in items['res']] + HIDDEN_ITEMS_NAMES
+        for name in items_names:
             incomplete_name = ''
-            name = item['name']
             for i, char in enumerate(name):
                 if i == 0 or i == len(name)-1:
                     incomplete_name += char
