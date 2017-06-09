@@ -147,6 +147,8 @@ async def botta(chat, match):
 async def namesolver(chat, match):
     msg = chat.message['text'].split('\n')[1].replace(' ', '')
     ris = await redis.hget('namesolver', msg)
+    if not ris:
+        return await chat.reply('non ho trovato nulla sorry')
     solutions = '\n'.join(ris.split(','))
     await chat.reply(f"Le possibili soluzioni sono:\n{solutions}")
 
