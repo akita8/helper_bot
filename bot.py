@@ -98,7 +98,7 @@ async def listabotta(chat, match):
                 else:
                     line = f'{username}: {em}\n'
                     if 'listabottatag' in match.group(0):
-                        line = '@' + line
+                        line = '@' + line if not status else line
                     formatted += line
             return await chat.send_text(formatted, parse_mode='Markdown')
         else:
@@ -128,10 +128,11 @@ async def botta(chat, match):
                 except ValueError:
                     admin_list_raw = await chat.get_chat_administrators()
                     admin_list = [admin['user']['username'] for admin in admin_list_raw['result']]
+                    negative = emoji.emojize(':x:', use_aliases=True)
                     if sender in admin_list and msg[1] in boss_list:
                         await redis.hset(f'boss:{group}', msg[1], 'ok')
                         return await chat.reply(f'{msg[1]} ha dato la botta!')
-                    elif len(msg[1]) == 1:
+                    elif len(msg[1]) == 1 and not negative:
                         await redis.hset(f'boss:{group}', sender, msg[1])
                         return await chat.reply(success_text)
                     return await chat.reply('Errore!\nOrario invalido!')
