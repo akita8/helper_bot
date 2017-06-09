@@ -132,7 +132,9 @@ async def botta(chat, match):
                     if sender in admin_list and msg[1] in boss_list:
                         await redis.hset(f'boss:{group}', msg[1], 'ok')
                         return await chat.reply(f'{msg[1]} ha dato la botta!')
-                    elif len(msg[1]) == 1 and not negative:
+                    elif len(msg[1]) == 1:
+                        if msg[1] == negative:
+                            return await chat.reply('@Meck87 è un pirla!')
                         await redis.hset(f'boss:{group}', sender, msg[1])
                         return await chat.reply(success_text)
                     return await chat.reply('Errore!\nOrario invalido!')
