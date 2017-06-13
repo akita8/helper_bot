@@ -34,20 +34,23 @@ with open('hidden_items.txt') as f:
 
 
 def restricted(func):
-    functools.wraps(func)
+    @functools.wraps(func)
     async def wrapper(chat, match):
+        sender = chat.sender['username']
         for g in ALLOWED_GROUPS:
             if chat.is_group() and g in chat.message['chat']['title']:
-                    return await func(chat, match, g)
-            elif await redis.sismember(g, chat.sender['username']):
-                return await func(chat, match, g)
+                    return await func(chat, match, {'username': sender, 'group': g})
+            elif await redis.sismember(g, sender):
+                return await func(chat, match, {'username': sender, 'group': g})
+        logger.info(f"{chat.sender.get('username')} tried to use the bot!")
         return await chat.reply('Questo è un bot per uso privato, mi spiace non sei autorizzato!')
     return wrapper
 
 
 @bot.command(r'/setboss')
 @restricted
-async def setboss(chat, match, group):
+async def setboss(chat, match, info):
+    key = f"boss:{info.get('group')}"
     msg = chat.message['text'].split(' ')
     if len(msg) != 3 or msg[1].lower() not in ('titano', 'fenice'):
         return await chat.reply(f'Errore!\nSintassi corretta: /setboss@{bot.name} titano(o fenice) deadline')
@@ -55,17 +58,17 @@ async def setboss(chat, match, group):
         datetime.strptime(msg[2].replace('.', ':'), '%H:%M')
     except ValueError:
         return await chat.reply('Errore!\nOrario invalido!')
-    group_members = await redis.smembers(group)
+    group_members = await redis.smembers(info.get('group'))
     fields = {**{member: "" for member in group_members}, **{"boss": msg[1], "deadline": msg[2]}}
-    await redis.delete(f'boss:{group}')
-    await redis.hmset_dict(f'boss:{group}', fields)
+    await redis.delete(key)
+    await redis.hmset_dict(key, fields)
     return await chat.reply(f'Successo!\nHai impostato una nuova scalata!\nBoss: {msg[1]}\nDeadline: {msg[2]}')
 
 
 @bot.command(r'^/listabotta')
 @restricted
-async def listabotta(chat, match, group):
-    rv = await redis.hgetall(f'boss:{group}')
+async def listabotta(chat, match, info):
+    rv = await redis.hgetall(f"boss:{info.get('group')}")
     if rv:
         boss = rv.pop('boss').capitalize()
         deadline = rv.pop('deadline')
@@ -89,32 +92,32 @@ async def listabotta(chat, match, group):
 
 @bot.command(r'^/botta')
 @restricted
-async def botta(chat, match, group):
-    sender = chat.sender['username']
+async def botta(chat, match, info):
+    key = f"boss:{info.get('group')}"
     msg = chat.message['text'].split(' ')
-    success_text = f'{sender} ha dato la botta!'
-    boss_list = await redis.hgetall(f'boss:{group}')
+    success_text = f"{info.get('username')} ha dato la botta!"
+    boss_list = await redis.hgetall(key)
     if boss_list:
         if len(msg) == 1:
-            await redis.hset(f'boss:{group}', sender, 'ok')
+            await redis.hset(key, info.get('username'), 'ok')
             return await chat.reply(success_text)
         elif len(msg) == 2:
             time = msg[1].replace('.', ':')
             try:
                 datetime.strptime(time, '%H:%M')
-                await redis.hset(f'boss:{group}', sender, msg[1])
-                return await chat.reply(f'{sender} darà la botta alle {time}!')
+                await redis.hset(key, info.get('username'), msg[1])
+                return await chat.reply(f"{info.get('username')} darà la botta alle {time}!")
             except ValueError:
                 admin_list_raw = await chat.get_chat_administrators()
                 admin_list = [admin['user']['username'] for admin in admin_list_raw['result']]
                 negative = emoji.emojize(':x:', use_aliases=True)
-                if sender in admin_list and msg[1] in boss_list:
-                    await redis.hset(f'boss:{group}', msg[1], 'ok')
+                if info.get('username') in admin_list and msg[1] in boss_list:
+                    await redis.hset(key, msg[1], 'ok')
                     return await chat.reply(f'{msg[1]} ha dato la botta!')
                 elif len(msg[1]) == 1:
                     if msg[1] == negative:
                         return await chat.reply('@Meck87 è un pirla!')
-                    await redis.hset(f'boss:{group}', sender, msg[1])
+                    await redis.hset(key, info.get('username'), msg[1])
                     return await chat.reply(success_text)
                 return await chat.reply('Errore!\nOrario invalido!')
         else:
@@ -125,30 +128,78 @@ async def botta(chat, match, group):
 
 @bot.command(r'^/setalert')
 @restricted
-async def set_alert(chat, match, group):
-    bad_sintax_error = 'Errore!\nSintassu corretta: /setalert nomeoggetto rangeprezzo(min-max)'
-
+async def set_alert(chat, match, info):
     msg = chat.message['text'].split(' ')
     if len(msg) != 3:
-        return await chat.reply(bad_sintax_error)
+        return await chat.reply('Errore!\nSintassi corretta: /setalert nomeoggetto prezzomassimo')
+    item = await redis.hget('items', msg[1].capitalize())
+    if item:
+        item_id, value = item.split(',')
+    else:
+        return await chat.reply(f"Errore!\nNon ho trovato un oggetto chiamato: {msg[1]}")
+    try:
+        max_ = int(msg[2])
+    except ValueError:
+        return await chat.reply('Errore!\nIl prezzo massimo non è un numero')
+    if max_ < int(value):
+        return await chat.reply(f"Errore!\nIl prezzo massimo è minore del prezzo base dell'oggetto: {value}")
 
-    price_range = msg[2].split('-')
-    if len(price_range) != 2:
-        return await chat.reply(bad_sintax_error)
+    new_alert = f'{item_id},{msg[2]},{msg[1]}'
+    if await redis.hexists('alert', info.get('username')):
+        other_alerts = await redis.hget('alert', info.get('username'))
+        if msg[1] not in other_alerts:
+            alerts = other_alerts + ':' + new_alert
+            logger.debug(f'new alert added {alerts}')
+        else:
+            alerts = other_alerts.split(':')
+            for i, alert in enumerate(alerts):
+                if msg[1] in alert:
+                    alerts[i] = new_alert
+            alerts = ":".join(alerts)
+            logger.debug(f'modified existing alert  {alerts}')
+        await redis.hset('alert', info.get('username'), alerts)
+    else:
+        await redis.hset('alert', info.get('username'), new_alert)
+    await chat.reply(f'Successo!Hai messo un alert su {msg[1]} al prezzo massimo di {msg[2]}')
 
-    async with bot.session.get(f'http://fenixweb.net:3300/api/v1/items/{msg[1]}') as s:
-        item = await s.json()
 
-    if 'error' in item:
-        return await chat.reply("Errore!\nL'oggetto non esiste!")
-    if not isinstance(item['res'], dict):
-        return await chat.reply("Errore!\nCi sono troppe possibili varianti dell'oggetto!\nscrivi il nome completo.")
+@bot.command(r'^/showalerts')
+@restricted
+async def show_alerts(chat, match, info):
+    alerts = await redis.hget('alert', info.get('username'))
+    if not alerts:
+        return await chat.reply('Non hai alerts settate --> /setalert')
+    msg = 'Le tue alert sono:\n'
+    for alert in alerts.split(':'):
+        _, max_, name = alert.split(',')
+        msg += f'{name}-->{max_}\n'
+    await chat.reply(msg)
 
+
+@bot.command(r'^/unsetalert')
+@restricted
+async def unset_alert(chat, match, info):
+    msg = chat.message['text'].split(' ')
+    if len(msg) != 2:
+        return await chat.reply('Errore!\nSintassi corretta: /unsetalert nomeoggetto')
+    alerts = await redis.hget('alert', info.get('username'))
+    other_alerts = alerts.split(':')
+    if not other_alerts:
+        return await chat.reply('Non hai alerts settate --> /setalert')
+    found = False
+    for i, alert in enumerate(other_alerts):
+        if msg[1] in alert:
+            other_alerts.pop(i)
+            found = True
+    if found:
+        await redis.hset('alert', info.get('username'), ':'.join(other_alerts))
+        return await chat.reply(f'{msg[1]} rimosso dalle tue alerts!')
+    await chat.reply(f'{msg[1]} non presente nelle tur alerts!')
 
 
 @bot.command(r'^Attenzione! Appena messo piede nella stanza')
 @restricted
-async def namesolver(chat, match, group):
+async def namesolver(chat, match, info):
     msg = chat.message['text'].split('\n')[1].replace(' ', '')
     ris = await redis.hget('namesolver', msg)
     if not ris:
@@ -209,26 +260,25 @@ async def update_sales():
     for item in sales['res']:
         key = f"sale:{item.get('item_id')}:{item.get('code')}"
         value = f"{item.get('price')},{item.get('quantity')}"
-        await redis.set(key, value)
-        await redis.expire(key, 15*60)
+        await redis.setex(key, 15*60, value)
 
 
 @setup_coro
 @periodic(15)
 async def send_alert():
-    cur = b'0'  # set initial cursor to 0
-    while cur:
-        cur, keys = await redis.scan(cur, match='sale:*')
-
+    async for key in redis.iscan(match='sale:*'):
+        print('Matched:', key)
 
 
 @setup_coro
 @periodic(3600*12)
 async def update_items_name():
     async with bot.session.get('http://fenixweb.net:3300/api/v1/items') as s:
-        items = await s.json()
+        raw_items = await s.json()
+    items = {item.get('name'): f"{item.get('id')},{item.get('value')}" for item in raw_items['res']}
+    await redis.hmset_dict('items', items)
     ris = {}
-    items_names = [item['name'] for item in items['res']] + HIDDEN_ITEMS_NAMES
+    items_names = list(items.keys()) + HIDDEN_ITEMS_NAMES
     for name in items_names:
         incomplete_name = ''
         for i, char in enumerate(name):
@@ -271,7 +321,7 @@ if __name__ == '__main__':
         setup_coro(bot.loop()),
         update_group_members,
         update_items_name,
-        update_sales,
+        #  update_sales,
         #  send_alert
     ]
 
