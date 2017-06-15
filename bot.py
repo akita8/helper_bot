@@ -7,8 +7,9 @@ import signal
 import aioredis
 import aiotg
 
-from config import Config
-from commands import set_boss, botta, lista_botta, namesolver, set_alert, unset_alert, show_alerts
+from utils import Config
+from commands import \
+    set_boss, botta, lista_botta, namesolver, set_alert, unset_alert, show_alerts, wordsolver
 from deco import restricted, setup_coro
 from background import update_group_members, update_items_name
 
@@ -16,7 +17,7 @@ from background import update_group_members, update_items_name
 logging.basicConfig(
     format='%(asctime)s %(name)-12s %(levelname)-8s %(funcName)s:%(message)s',
     level=logging.INFO)
-logger = logging.getLogger('helper_bot')
+logger = logging.getLogger('core')
 
 
 async def stop_loop(loop, redis):
@@ -48,6 +49,7 @@ def create_bot(redis):
         (botta, r'^/botta'),
         (lista_botta, r'^/listabotta'),
         (namesolver, r'^Attenzione! Appena messo piede nella stanza'),
+        (wordsolver, r'^Sul portone del rifugio vi è una piccola pulsantiera'),
         (set_alert, r'^/setalert'),
         (unset_alert, r'^/unsetalert'),
         (show_alerts, r'^/showalerts')]

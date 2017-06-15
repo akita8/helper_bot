@@ -2,7 +2,7 @@ import asyncio
 import functools
 import logging
 
-from config import Config
+from utils import Config
 
 
 logger = logging.getLogger('decorators')

@@ -1,7 +1,7 @@
 import emoji
 from datetime import datetime
 
-from config import Config
+from utils import Config, SolverData
 
 
 async def set_boss(chat, match, info, redis):
@@ -148,3 +148,28 @@ async def namesolver(chat, match, info, redis):
         return await chat.reply('non ho trovato nulla sorry')
     solutions = '\n'.join(ris.split(','))
     await chat.reply(f"Le possibili soluzioni sono:\n{solutions}")
+
+
+async def wordsolver(chat, match, info, redis):
+    word = chat.message['text'].split('\n')[1].replace(' ', '')[1:]
+    loc = [i for i, letter in enumerate(word) if letter == '_']
+    ris = []
+    for parola in SolverData.WORDS_ITA[len(word)]:
+        attempt = ''
+        for i, l in enumerate(parola):
+            if i in loc:
+                attempt += '_'
+            else:
+                attempt += l
+        if attempt == word:
+            ris.append(parola)
+
+    if ris:
+        if len(ris) > 10:
+            solutions = '\n'.join(ris[:10])
+            await chat.reply(f"Le possibili soluzioni sono più di 10, queste sono solo le prime:\n{solutions}")
+        else:
+            solutions = '\n'.join(ris)
+            await chat.reply(f"Le possibili soluzioni sono:\n{solutions}")
+    else:
+        await chat.reply("Non ho trovato nulla:( per favore avvisa il mio capo così possiamo capire cp'è che non va;)")

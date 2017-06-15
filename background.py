@@ -1,4 +1,4 @@
-from config import Config
+from utils import Config, SolverData
 from deco import periodic, setup_coro
 
 
@@ -28,7 +28,7 @@ async def update_items_name(bot, redis):
     items = {item.get('name'): f"{item.get('id')},{item.get('value')}" for item in raw_items['res']}
     await redis.hmset_dict('items', items)
     ris = {}
-    items_names = list(items.keys()) + Config.HIDDEN_ITEMS_NAMES
+    items_names = list(items.keys()) + SolverData.HIDDEN_ITEMS_NAMES
     for name in items_names:
         incomplete_name = ''
         for i, char in enumerate(name):
