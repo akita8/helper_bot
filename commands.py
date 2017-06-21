@@ -1,4 +1,7 @@
+import asyncio
+
 import emoji
+
 from datetime import datetime
 
 from utils import Config, SolverData
@@ -30,7 +33,7 @@ async def lista_botta(chat, match, info, redis):
         positive = emoji.emojize(':white_check_mark:', use_aliases=True)
         for username, status in rv.items():
             em = positive if status == 'ok' else status if status else negative
-            if len(em) > 1:
+            if em.encode('utf-8') not in Config.EMOJI_BYTES:
                 warning = emoji.emojize(':warning:', use_aliases=True)
                 formatted += warning + f' *{username}*: {em}\n'
             else:
@@ -52,6 +55,12 @@ async def botta(chat, match, info, redis):
         if len(msg) == 1:
             await redis.hset(key, info.get('username'), 'ok')
             return await chat.reply(success_text)
+        elif msg[1].encode('utf-8') in Config.EMOJI_BYTES:
+            negative = emoji.emojize(':x:', use_aliases=True)
+            if msg[1] == negative:
+                return await chat.reply('@Meck87 è un pirla!')
+            await redis.hset(key, info.get('username'), msg[1])
+            return await chat.reply(success_text)
         elif len(msg) == 2:
             time = msg[1].replace('.', ':')
             try:
@@ -59,17 +68,14 @@ async def botta(chat, match, info, redis):
                 await redis.hset(key, info.get('username'), msg[1])
                 return await chat.reply(f"{info.get('username')} darà la botta alle {time}!")
             except ValueError:
-                admin_list_raw = await chat.get_chat_administrators()
-                admin_list = [admin['user']['username'] for admin in admin_list_raw['result']]
-                negative = emoji.emojize(':x:', use_aliases=True)
-                if info.get('username') in admin_list and msg[1] in boss_list:
-                    await redis.hset(key, msg[1], 'ok')
-                    return await chat.reply(f'{msg[1]} ha dato la botta!')
-                elif len(msg[1]) == 1:
-                    if msg[1] == negative:
-                        return await chat.reply('@Meck87 è un pirla!')
-                    await redis.hset(key, info.get('username'), msg[1])
-                    return await chat.reply(success_text)
+                if chat.is_group():
+                    admin_list_raw = await chat.get_chat_administrators()
+                    admin_list = [admin['user']['username'] for admin in admin_list_raw['result']]
+                    if info.get('username') in admin_list and msg[1] in boss_list:
+                        await redis.hset(key, msg[1], 'ok')
+                        return await chat.reply(f'{msg[1]} ha dato la botta!')
+                    else:
+                        return await chat.reply('Errore!Non sei un amministratore o il giocatore non è nel gruppo!')
                 return await chat.reply('Errore!\nOrario invalido!')
         else:
             return await chat.reply(f'Errore!\nSintassi corretta: /botta@{Config.NAME} orario_botta(opzionale)')
@@ -146,30 +152,32 @@ async def namesolver(chat, match, info, redis):
     ris = await redis.hget('namesolver', msg)
     if not ris:
         return await chat.reply('non ho trovato nulla sorry')
-    solutions = '\n'.join(ris.split(','))
-    await chat.reply(f"Le possibili soluzioni sono:\n{solutions}")
-
+    solutions = ris.split(',')
+    await chat.reply(f"Le possibili soluzioni sono:")
+    for s in solutions:
+        await chat.send_text(s)
 
 async def wordsolver(chat, match, info, redis):
-    word = chat.message['text'].split('\n')[1].replace(' ', '')[1:]
-    loc = [i for i, letter in enumerate(word) if letter == '_']
-    ris = []
-    for parola in SolverData.WORDS_ITA[len(word)]:
+    target = chat.message['text'].split('\n')[1].replace(' ', '')[1:]
+    loc = [i for i, letter in enumerate(target) if letter == '_']
+    found_count = 0
+    letters = {l for l in target.replace('_', '')}
+    index = 0 if target[0] == '_' else SolverData.WORDS_ITA[len(target)][1][target[0]]
+    await chat.reply('OK inizio a cercare!')
+    for word in SolverData.WORDS_ITA[len(target)][0][index:]:
         attempt = ''
-        for i, l in enumerate(parola):
+        for i, l in enumerate(word):
             if i in loc:
+                if l in letters:
+                    continue
                 attempt += '_'
             else:
                 attempt += l
-        if attempt == word:
-            ris.append(parola)
-
-    if ris:
-        if len(ris) > 10:
-            solutions = '\n'.join(ris[:10])
-            await chat.reply(f"Le possibili soluzioni sono più di 10, queste sono solo le prime:\n{solutions}")
-        else:
-            solutions = '\n'.join(ris)
-            await chat.reply(f"Le possibili soluzioni sono:\n{solutions}")
+        if attempt == target:
+            found_count += 1
+            await chat.send_text(word)
+        if found_count == 3:
+            return await chat.reply('Te ne ho mandate 3 cercarne di piu sarebbe uno spreco di tempo!')
+        await asyncio.sleep(0.00001)
     else:
-        await chat.reply("Non ho trovato nulla:( per favore avvisa il mio capo così possiamo capire cp'è che non va;)")
+        await chat.reply("Non ho trovato nulla:( per favore avvisa un admin così possiamo migliorare il servizio")
