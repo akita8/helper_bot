@@ -105,7 +105,8 @@ async def build_maps(bot, redis):
                 await private_chat.send_text(reply, parse_mode='Markdown')
             not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
             deadline = await redis.ttl(key)
-            await redis.setex(key, int(deadline), ':'.join(not_processed) + ':')
+            remaning = ':'.join(not_processed)
+            await redis.setex(key, int(deadline), remaning + ':' if remaning else '')
         is_new_map = True if await redis.ttl(map_key) == -2 else False
         await redis.hset(map_key, 'string', str(dungeon_map))
         if is_new_map:
