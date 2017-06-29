@@ -1,4 +1,7 @@
-from utils import Config, SolverData
+from collections import defaultdict
+from ast import literal_eval
+
+from utils import Config, SolverData, dungeon_len
 from deco import periodic, setup_coro
 
 
@@ -54,3 +57,48 @@ async def update_group_members(bot, redis):
             group_members = await s.json()
         for member in group_members['res']:
             await redis.sadd(group, member['nickname'])
+
+
+@setup_coro
+@periodic(60)
+async def build_maps(bot, redis):
+    async for key in redis.iscan(match='dungeon:*'):
+        dungeon_name = key.split(':')[1]
+        map_key = f'map:{dungeon_name}'
+        dungeon_map = await redis.hget(map_key, 'string')
+        if not dungeon_map:
+            dungeon_map = [['']*3 for _ in range(dungeon_len(dungeon_name))]
+        else:
+            dungeon_map = literal_eval(dungeon_map)
+        dungeon_string = await redis.get(key)
+        dungeon = []
+        for line in dungeon_string.split(':')[:-1]:
+            line = line.split(',')
+            if line not in dungeon:
+                dungeon.append(line)
+        ordered_dungeon = defaultdict(list)
+        for entry in sorted(dungeon, key=lambda x: x[1]):
+            ordered_dungeon[entry[0]].append(entry[1:])
+        for user, entries in ordered_dungeon.items():
+            processed = []
+            reply = ''
+            for i, entry in enumerate(entries):
+                event = entry[1]
+                if event in Config.DUNGEONS_ROOMS:
+                    if i >= 2 and entries[i - 1][1] in Config.DUNGEONS_DIRECTIONS:
+                        try:
+                            number = int(entries[i - 2][1])
+                            direction_emoji = entries[i - 1][1]
+                            direction = Config.DUNGEONS_DIRECTIONS[direction_emoji]
+                            dungeon_map[number - 1][direction] = event
+                            processed += [i, i-2, i-1]
+                            reply += f'Hai aggiunto *{event}* alla stanza numero {number} direzione {direction_emoji}\n'
+                        except ValueError:
+                            continue
+            if reply:
+                private_chat = bot.private(await redis.hget(user, 'user_id'))
+                await private_chat.send_text(reply, parse_mode='Markdown')
+            not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
+            deadline = await redis.ttl(key)
+            await redis.setex(key, int(deadline), ':'.join(not_processed))
+        await redis.hset(map_key, 'string', str(dungeon_map))
