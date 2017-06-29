@@ -40,13 +40,15 @@ async def log_user_action(chat, **kwargs):
     redis = kwargs.get('redis')
     info = kwargs.get('info')
     match = kwargs.get('match')
-    active_dungeon = await redis.hget(info.get('username'), 'active_dungeon')
+    sender = info.get('username')
+    active_dungeon = await redis.hget(sender, 'active_dungeon')
     if active_dungeon:
         dungeon_room = info.get('dungeon_room')
         dungeon_room = dungeon_room if dungeon_room else Config.DUNGEONS_RE.get(match.group(0))
+        time = str(int(chat.message.get('forward_date')) + 1)
         return await redis.append(
             f"dungeon:{active_dungeon}",
-            f"{info.get('username')},{chat.message.get('forward_date')},{dungeon_room}:")
+            f"{sender},{time},{dungeon_room}:")
     await chat.reply(ErrorReply.NO_ACTIVE_DUNGEONS)
 
 

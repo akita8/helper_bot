@@ -34,8 +34,8 @@ async def wordsolver(chat, **_):
         if attempt == target:
             found_count += 1
             await chat.send_text(word)
-        if found_count == 3:
-            return await chat.reply('Te ne ho mandate 3, cercarne di piu sarebbe uno spreco di tempo!')
+        if found_count == 4:
+            return await chat.reply('Te ne ho mandate 4, cercarne di piu sarebbe uno spreco di tempo!')
         await asyncio.sleep(0.00001)
     else:
-        await chat.reply(ErrorReply.WORD_NOT_FOUND)
+        await chat.reply("Ho controllato l'intero dizionario quindi la parola giusta è tra quelle che ti ho mandato!")

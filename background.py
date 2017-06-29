@@ -1,8 +1,13 @@
 from collections import defaultdict
 from ast import literal_eval
+from logging import getLogger
+from datetime import timedelta
 
 from utils import Config, SolverData, dungeon_len
 from deco import periodic, setup_coro
+
+
+logger = getLogger(__name__)
 
 
 @setup_coro
@@ -60,7 +65,7 @@ async def update_group_members(bot, redis):
 
 
 @setup_coro
-@periodic(60)
+@periodic(30)
 async def build_maps(bot, redis):
     async for key in redis.iscan(match='dungeon:*'):
         dungeon_name = key.split(':')[1]
@@ -100,5 +105,8 @@ async def build_maps(bot, redis):
                 await private_chat.send_text(reply, parse_mode='Markdown')
             not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
             deadline = await redis.ttl(key)
-            await redis.setex(key, int(deadline), ':'.join(not_processed))
+            await redis.setex(key, int(deadline), ':'.join(not_processed) + ':')
+        is_new_map = True if await redis.ttl(map_key) == -2 else False
         await redis.hset(map_key, 'string', str(dungeon_map))
+        if is_new_map:
+            await redis.expire(map_key, int(timedelta(days=7).total_seconds()))

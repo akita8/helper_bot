@@ -11,7 +11,7 @@ from utils import Config
 from commands.boss import set_boss, botta, lista_botta
 from commands.riddle_solvers import wordsolver
 from commands.dungeon import set_dungeon, log_user_action, log_user_position, log_user_direction, close_dungeon, get_map
-from button_callbacks import gabbia_buttons_reply, gabbia_choice
+from button_callbacks import gabbia_buttons_reply, gabbia_choice, maps_button_reply_phase1, maps_choice_phase1
 from deco import restricted, setup_coro
 from background import update_group_members, update_items_name, build_maps
 
@@ -30,7 +30,7 @@ async def stop_loop(loop, redis):
 
 
 def clean_shutdown(loop, signame, redis):
-    logger.warning(f'{signame} recived, stopping!')
+    logger.warning(f'{signame} received, stopping!')
     for t in asyncio.Task.all_tasks():
         t.cancel()
     loop.create_task(stop_loop(loop, redis))
@@ -53,22 +53,28 @@ def create_bot(redis):
         (lista_botta, r'^/listabotta'),
         (wordsolver, r'^Sul portone del rifugio vi è una piccola pulsantiera'),
         (gabbia_buttons_reply, r'^Attenzione! Appena messo piede nella stanza'),
-        # (set_alert, r'^/setalert'),
-        # (unset_alert, r'^/unsetalert'),
-        # (show_alerts, r'^/showalerts'),
+        (maps_button_reply_phase1, '^/mappe'),
         (set_dungeon, r'^Sei stato aggiunto alla Lista Avventurieri del dungeon (.*)!'),
         (close_dungeon, '^/quitdg'),
         (get_map, '^/mappa'),
         (log_user_position, r'Stanza (\d+)/(\d+)'),
-        (log_user_direction, rf"({Config.ARROW_UP}|{Config.ARROW_LEFT}|{Config.ARROW_RIGHT})")
+        (log_user_direction, rf"({Config.ARROW_UP}|{Config.ARROW_LEFT}|{Config.ARROW_RIGHT})"),
+        # (set_alert, r'^/setalert'),
+        # (unset_alert, r'^/unsetalert'),
+        # (show_alerts, r'^/showalerts'),
     ]
     dungeon_commands = [(log_user_action, '^'+string) for string in Config.DUNGEONS_RE]
     commands += dungeon_commands
 
+    callbacks = [
+        (gabbia_choice, 'gabbiaclick-(\w+|\d+)'),
+        (maps_choice_phase1, 'maps1click-(\w)')
+    ]
+
     for fn, re in commands:
         bot.add_command(re, restricted_deco(fn))
-
-    bot.add_callback('buttonclick-(\w+|\d+)', restricted_deco(gabbia_choice))
+    for fn, re in callbacks:
+        bot.add_callback(re, restricted_deco(fn))
 
     return bot
 

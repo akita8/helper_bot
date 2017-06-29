@@ -56,6 +56,19 @@ def dungeon_len(name):
     return Config.DUNGEONS_LENGTH[dungeon_name]
 
 
+def markup_inline_keyboard(buttons):
+    markup = {
+        'type': 'InlineKeyboardMarkup',
+        'inline_keyboard': []}
+    for button_level in buttons:
+        formatted_level = []
+        for button in button_level:
+            text, cb_data = button
+            formatted_level.append({'type': 'InlineKeyboardButton', 'text': text, 'callback_data': cb_data})
+        markup['inline_keyboard'].append(formatted_level)
+    return markup
+
+
 class Config:
 
     ALLOWED_GROUPS, NAME, TOKEN = load_user_config()
@@ -72,12 +85,11 @@ class Config:
     NEUTRAL = emoji.emojize(':full_moon_with_face:', use_aliases=True)
     POSITIVE = emoji.emojize(':green_heart:', use_aliases=True)
     NEGATIVE = emoji.emojize(':red_circle:', use_aliases=True)
-
     DUNGEONS_RE = {
         'Incontri un': 'mostro',
         'Oltrepassando la porta ti trovi davanti ad altre due porte': 'due porte',
         "Appena entrato nella stanza vedi nell'angolo": 'aiuta',
-        "Come avanzi di due passi scatta un meccanismo e un'ascia gigantesca ti precipita addosso": 'ascia',
+        "Un cartello con un punto esclamativo ti preoccupa, al centro della stanza": 'ascia',
         "Davanti a te si erge un portale completamente rosso": 'desideri',
         "Appena entrato nella stanza noti subito una strana fontana situata nel centro": 'fontana',
         "Al centro della stanza ci sono 3 leve": 'leve',
@@ -133,8 +145,8 @@ class Config:
         "La Vetta delle Anime": 50,
         "Il Lago Evanescente": 55,
     }
-    DUNGEON_ACRONYMS = {}
     DUNGEONS_DIRECTIONS = {ARROW_LEFT: 0, ARROW_UP: 1, ARROW_RIGHT: 2}
+    DUNGEON_MARKUP = markup_inline_keyboard([[(key, f"maps1click-{key}")] for key in DUNGEONS_LENGTH])
 
 
 class SolverData:
