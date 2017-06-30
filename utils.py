@@ -1,6 +1,7 @@
 import os
 import configparser
 import datetime
+import json
 
 import emoji
 
@@ -66,7 +67,7 @@ def markup_inline_keyboard(buttons):
             text, cb_data = button
             formatted_level.append({'type': 'InlineKeyboardButton', 'text': text, 'callback_data': cb_data})
         markup['inline_keyboard'].append(formatted_level)
-    return markup
+    return json.dumps(markup)
 
 
 class Config:
@@ -95,7 +96,7 @@ class Config:
         "Al centro della stanza ci sono 3 leve": 'leve',
         "Nella stanza incontri un marinaio con aria furba": 'marinaio',
         "Entri nella stanza e per sbaglio pesti una mattonella leggermente rovinata": 'mattonella',
-        "Raggiungi una stanza con un'incisione profonda: Stanza della Meditazione, cosa vuoi fare?": 'meditazione',
+        "Raggiungi una stanza con un'incisione profonda:": 'meditazione',
         "Nella stanza incontri un viandante": "mercante",
         "Una luce esagerata ti avvolge, esci in un piccolo spiazzo": "pozzo",
         "Appena aperta la porta della stanza": "pulsantiera",
