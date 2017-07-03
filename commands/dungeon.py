@@ -103,3 +103,4 @@ async def next_room(chat, **kwargs):
     dungeon_map = literal_eval(await redis.get(f"map:{active_dungeon}"))
     await redis.hset(sender, 'position', position)
     return await chat.reply(stringify_dungeon_room(position, *dungeon_map[position]), parse_mode='Markdown')
+

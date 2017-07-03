@@ -45,7 +45,7 @@ async def stats_choice_phase1(chat, **kwargs):
 async def stats_choice_phase2(chat, **kwargs):
     dungeon, num = kwargs.get('match').group(1).split(':')
     redis = kwargs.get('redis')
-    dungeon_map = literal_eval(await redis.hget(f'map:{dungeon} {num}', 'string'))
+    dungeon_map = literal_eval(await redis.get(f'map:{dungeon} {num}'))
     counter = defaultdict(int)
     for level in dungeon_map:
         for room in level:
