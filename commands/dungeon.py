@@ -102,7 +102,7 @@ async def next_room(chat, **kwargs):
         return await chat.reply('Errore!\n La stanza richiesta è maggiore ')
     dungeon_map = literal_eval(await redis.get(f"map:{active_dungeon}"))
     await redis.hset(sender, 'position', position)
-    return await chat.reply(stringify_dungeon_room(position, *dungeon_map[position]), parse_mode='Markdown')
+    return await chat.reply(stringify_dungeon_room(position, *dungeon_map[position-1]), parse_mode='Markdown')
 
 
 @must_have_active_dungeon
