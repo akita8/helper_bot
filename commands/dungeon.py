@@ -104,3 +104,9 @@ async def next_room(chat, **kwargs):
     await redis.hset(sender, 'position', position)
     return await chat.reply(stringify_dungeon_room(position, *dungeon_map[position]), parse_mode='Markdown')
 
+
+@must_have_active_dungeon
+async def get_current_dungeon(chat, **kwargs):
+    redis = kwargs.get('redis')
+    sender = kwargs.get('info').get('username')
+    await chat.reply(await redis.hget(sender, 'active_dungeon'))

@@ -11,7 +11,7 @@ from utils import Config
 from commands.boss import set_boss, botta, lista_botta
 from commands.riddle_solvers import wordsolver
 from commands.dungeon import set_dungeon, log_user_action, log_user_position, log_user_direction, close_dungeon,\
-    get_map, next_room
+    get_map, next_room, get_current_dungeon
 from button_callbacks import gabbia_buttons_reply, gabbia_choice, stats_button_reply_phase1,\
     stats_choice_phase1, stats_choice_phase2
 from deco import restricted, setup_coro
@@ -57,11 +57,12 @@ def create_bot(redis):
         (gabbia_buttons_reply, r'^Attenzione! Appena messo piede nella stanza'),
         (stats_button_reply_phase1, '^/stats'),
         (set_dungeon, r'^Sei stato aggiunto alla Lista Avventurieri del dungeon (.*)!'),
-        (close_dungeon, '^/quitdg'),
-        (get_map, '^/mappa'),
+        (close_dungeon, r'^/quitdg'),
+        (get_map, r'^/mappa'),
         (log_user_position, r'Stanza (\d+)/(\d+)'),
         (log_user_direction, rf"({Config.ARROW_UP}|{Config.ARROW_LEFT}|{Config.ARROW_RIGHT})"),
-        (next_room, '^/next')
+        (next_room, r'^/next'),
+        (get_current_dungeon, r'/dungeon')
         # (set_alert, r'^/setalert'),
         # (unset_alert, r'^/unsetalert'),
         # (show_alerts, r'^/showalerts'),
