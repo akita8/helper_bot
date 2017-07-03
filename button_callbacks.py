@@ -21,7 +21,7 @@ async def gabbia_choice(chat, **kwargs):
     else:
         chat.message['forward_date'] = match.group(1)
         await chat.edit_text(chat.message.get('message_id'), 'Ok lo ho aggiunto al tuo dungeon!')
-        kwargs['info'] = {**kwargs['info'], 'username': chat.message['chat'].get('username'), 'dungeon_room': 'gabbia'}
+        kwargs['info'] = {'username': chat.message['chat'].get('username'), 'dungeon_room': 'gabbia'}
         await log_user_action(chat, **kwargs)
 
 
