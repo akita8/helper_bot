@@ -144,7 +144,7 @@ class Config:
         'trappola': NEGATIVE,
         '': emoji.emojize(':question:', use_aliases=True)
     }
-    DUNGEONS_ROOMS = set(DUNGEONS_RE.values())
+    DUNGEONS_ROOMS = set(DUNGEONS_RE.values()).union({'gabbia'})
     DUNGEONS_LENGTH = {
         "Il Burrone Oscuro": 10,
         "La Grotta Infestata": 15,
