@@ -70,6 +70,12 @@ def markup_inline_keyboard(buttons):
     return json.dumps(markup)
 
 
+def stringify_dungeon_room(i, left, up, right):
+    return f"*Stanza*: {i}\n{Config.ARROW_LEFT} --> {left} {Config.DUNGEONS_EMOJIS.get(left)}\n" \
+           f"{Config.ARROW_UP} --> {up} {Config.DUNGEONS_EMOJIS.get(up)}\n" \
+           f"{Config.ARROW_RIGHT} --> {right} {Config.DUNGEONS_EMOJIS.get(right)}\n"
+
+
 class Config:
 
     ALLOWED_GROUPS, NAME, TOKEN = load_user_config()
@@ -88,8 +94,10 @@ class Config:
     NEGATIVE = emoji.emojize(':red_circle:', use_aliases=True)
     DUNGEONS_RE = {
         'Incontri un': 'mostro',
+        'Aprendo la porta ti ritrovi in un ambiente aperto,': 'vecchia',
         'Oltrepassando la porta ti trovi davanti ad altre due porte': 'due porte',
         "Appena entrato nella stanza vedi nell'angolo": 'aiuta',
+        "Questa stanza è vuota, c'è solo una piccola fessura sul muro di fronte": 'tributo',
         "Un cartello con un punto esclamativo ti preoccupa, al centro della stanza": 'ascia',
         "Davanti a te si erge un portale completamente rosso": 'desideri',
         "Appena entrato nella stanza noti subito una strana fontana situata nel centro": 'fontana',
@@ -113,6 +121,8 @@ class Config:
     }
     DUNGEONS_EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
+        'tributo': NEGATIVE,
+        'vecchia': NEUTRAL,
         'due porte': NEUTRAL,
         'aiuta': POSITIVE,
         'ascia': NEUTRAL,
@@ -147,7 +157,7 @@ class Config:
         "Il Lago Evanescente": 55,
     }
     DUNGEONS_DIRECTIONS = {ARROW_LEFT: 0, ARROW_UP: 1, ARROW_RIGHT: 2}
-    DUNGEON_MARKUP = markup_inline_keyboard([[(key, f"maps1click-{key}")] for key in DUNGEONS_LENGTH])
+    DUNGEON_MARKUP = markup_inline_keyboard([[(key, f"stats1click-{key}")] for key in DUNGEONS_LENGTH])
 
 
 class SolverData:
