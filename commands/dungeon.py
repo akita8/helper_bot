@@ -13,7 +13,7 @@ async def set_dungeon(chat, **kwargs):
     if await redis.hget(info.get('username'), 'active_dungeon'):
         return await chat.reply('Errore!\nHai gia un dungeon attivo concludilo o scambialo con /quitdg')
     await redis.hmset_dict(info.get('username'),
-                           {'active_dungeon': dungeon_name, 'user_id': chat.message['chat'].get('id'), 'position': 1})
+                           {'active_dungeon': dungeon_name, 'user_id': chat.message['chat'].get('id'), 'position': 0})
     await redis.setex('dungeon:' + dungeon_name, int(timedelta(days=2, hours=7).total_seconds()), '')
     if not await redis.exists(f"map:{dungeon_name}"):
         await redis.set(f"map:{dungeon_name}", str([['']*3 for _ in range(dungeon_len(dungeon_name))]))
