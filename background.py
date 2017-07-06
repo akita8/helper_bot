@@ -102,12 +102,13 @@ async def build_maps(bot, redis):
                     private_chat = bot.private(id_)
                     await private_chat.send_text(reply, parse_mode='Markdown')
                     new_position = number + 1
-                    next_room = dungeon_map[new_position]
-                    await redis.hset(user, 'position', new_position)
-                    if not number > dungeon_len(dungeon_name) and any(next_room):
-                        private_chat.send_text(
-                            stringify_dungeon_room(new_position, *next_room),
-                            parse_mode='Markdown')
+                    if number < len(dungeon_map):
+                        next_room = dungeon_map[number]
+                        await redis.hset(user, 'position', new_position)
+                        if not number > dungeon_len(dungeon_name) and any(next_room):
+                            private_chat.send_text(
+                                stringify_dungeon_room(new_position, *next_room),
+                                parse_mode='Markdown')
             not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
             dungeon_ttl = await redis.ttl(key)
             remaining = ':'.join(not_processed)
