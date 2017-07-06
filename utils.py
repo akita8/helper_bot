@@ -1,7 +1,8 @@
 import os
 import configparser
 import datetime
-import json
+
+from json import dumps
 
 import emoji
 
@@ -57,7 +58,7 @@ def dungeon_len(name):
     return Config.DUNGEONS_LENGTH[dungeon_name]
 
 
-def markup_inline_keyboard(buttons):
+def markup_inline_keyboard(buttons, json=True):
     markup = {
         'type': 'InlineKeyboardMarkup',
         'inline_keyboard': []}
@@ -67,13 +68,22 @@ def markup_inline_keyboard(buttons):
             text, cb_data = button
             formatted_level.append({'type': 'InlineKeyboardButton', 'text': text, 'callback_data': cb_data})
         markup['inline_keyboard'].append(formatted_level)
-    return json.dumps(markup)
+    if json:
+        return dumps(markup)
+    return markup
 
 
 def stringify_dungeon_room(i, left, up, right):
-    return f"*Stanza*: {i}\n{Config.ARROW_LEFT} --> {left} {Config.DUNGEONS_EMOJIS.get(left)}\n" \
-           f"{Config.ARROW_UP} --> {up} {Config.DUNGEONS_EMOJIS.get(up)}\n" \
-           f"{Config.ARROW_RIGHT} --> {right} {Config.DUNGEONS_EMOJIS.get(right)}\n"
+    return f"*Stanza*: {i}\n{Config.ARROW_LEFT}{left} {Config.DUNGEONS_EMOJIS.get(left)}\n" \
+           f"{Config.ARROW_UP}{up} {Config.DUNGEONS_EMOJIS.get(up)}\n" \
+           f"{Config.ARROW_RIGHT}{right} {Config.DUNGEONS_EMOJIS.get(right)}\n"
+
+
+def map_directions(dungeon, start, end, json=True):
+    return markup_inline_keyboard(
+        [[(emoji.emojize(":arrow_double_up:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:up")],
+         [(emoji.emojize(":arrow_double_down:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:down")]],
+        json=json)
 
 
 class Config:
@@ -142,6 +152,7 @@ class Config:
         'spada': emoji.emojize(':heavy_dollar_sign:', use_aliases=True),
         'predone': NEUTRAL,
         'trappola': NEGATIVE,
+        'gabbia': NEUTRAL,
         '': emoji.emojize(':question:', use_aliases=True)
     }
     DUNGEONS_ROOMS = set(DUNGEONS_RE.values()).union({'gabbia'})
@@ -156,6 +167,7 @@ class Config:
         "La Vetta delle Anime": 50,
         "Il Lago Evanescente": 55,
     }
+    DUNGEONS_ACRONYMS = {''.join([w[0].lower() for w in key.split(' ')][1:]): key for key in DUNGEONS_LENGTH}
     DUNGEONS_DIRECTIONS = {ARROW_LEFT: 0, ARROW_UP: 1, ARROW_RIGHT: 2}
     DUNGEON_MARKUP = markup_inline_keyboard([[(key, f"stats1click-{key}")] for key in DUNGEONS_LENGTH])
 

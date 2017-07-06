@@ -1,7 +1,7 @@
 from datetime import timedelta
 from ast import literal_eval
 
-from utils import Config, dungeon_len, stringify_dungeon_room
+from utils import Config, dungeon_len, stringify_dungeon_room, is_number, map_directions
 from deco import must_be_forwarded_message, must_have_active_dungeon, strict_args_num
 
 
@@ -13,7 +13,7 @@ async def set_dungeon(chat, **kwargs):
     if await redis.hget(info.get('username'), 'active_dungeon'):
         return await chat.reply('Errore!\nHai gia un dungeon attivo concludilo o scambialo con /quitdg')
     await redis.hmset_dict(info.get('username'),
-                           {'active_dungeon': dungeon_name, 'user_id': chat.message['chat'].get('id'), 'position': 1})
+                           {'active_dungeon': dungeon_name, 'position': 1})
     await redis.setex('dungeon:' + dungeon_name, int(timedelta(days=2, hours=7).total_seconds()), '')
     if not await redis.exists(f"map:{dungeon_name}"):
         await redis.set(f"map:{dungeon_name}", str([['']*3 for _ in range(dungeon_len(dungeon_name))]))
@@ -30,7 +30,7 @@ async def close_dungeon(chat, **kwargs):
     if len(args) == 1:
         receiver = args[0]
         if await redis.sismember(info.get('group'), receiver):
-            await redis.hset(receiver, 'active_dungeon', dungeon_name)
+            await redis.hmset_dict(receiver, {'active_dungeon': dungeon_name, 'position': 1})
             await chat.reply(f"Hai scambiato {dungeon_name} con {receiver}")
         else:
             return await chat.reply(f"Errore!\n{receiver} non è nel tuo gruppo!")
@@ -46,6 +46,7 @@ async def log_user_action(chat, **kwargs):
     match = kwargs.get('match')
     sender = info.get('username')
     active_dungeon = kwargs.get('active_dungeon')
+    await redis.hsetnx(sender, 'user_id', chat.message['chat'].get('id'))
     dungeon_room = info.get('dungeon_room')
     dungeon_room = dungeon_room if dungeon_room else Config.DUNGEONS_RE.get(match.group(0))
     time = str(int(chat.message.get('forward_date')) + 1)
@@ -78,12 +79,27 @@ async def log_user_position(chat, **kwargs):
 @must_have_active_dungeon
 async def get_map(chat, **kwargs):
     redis = kwargs.get('redis')
+    args = kwargs.get('info').get('args')
     active_dungeon = kwargs.get('active_dungeon')
-    dungeon_map = literal_eval(await redis.get(f'map:{active_dungeon}'))
-    printable_map = active_dungeon + '\n\n'
-    for i, level in enumerate(dungeon_map, 1):
-        printable_map += stringify_dungeon_room(i, *level)
-    return await chat.reply(printable_map, parse_mode='Markdown')
+    if len(args) == 2:
+        name, num = args
+        if name in Config.DUNGEONS_ACRONYMS:
+            active_dungeon = Config.DUNGEONS_ACRONYMS[name] + ' ' + num
+        else:
+            return chat.reply(f"Errore!\nLa sigla dungeon che mi ha mandato non esiste!\n"
+                              f"Opzioni valide: {', '.join(Config.DUNGEONS_ACRONYMS.keys())}")
+        if is_number(num):
+            active_dungeon += ' ' + num
+        else:
+            return chat.reply(f"Errore!\n{num} non è un numero!")
+    map_string = await redis.get(f'map:{active_dungeon}')
+    if not map_string:
+        return await chat.reply('La mappa del dungeon che hai richiesto non esiste!')
+    dungeon_map = literal_eval(map_string)[:5]
+    printable_map = \
+        active_dungeon + '\n\n' + ''.join([stringify_dungeon_room(i, *level) for i, level in enumerate(dungeon_map, 1)])
+    markup = map_directions(active_dungeon, 0, 5)
+    return await chat.send_text(printable_map, reply_markup=markup, parse_mode='Markdown')
 
 
 @must_have_active_dungeon

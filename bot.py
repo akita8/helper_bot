@@ -13,7 +13,7 @@ from commands.riddle_solvers import wordsolver
 from commands.dungeon import set_dungeon, log_user_action, log_user_position, log_user_direction, close_dungeon,\
     get_map, next_room, get_current_dungeon
 from button_callbacks import gabbia_buttons_reply, gabbia_choice, stats_button_reply_phase1,\
-    stats_choice_phase1, stats_choice_phase2
+    stats_choice_phase1, stats_choice_phase2, map_next
 from deco import restricted, setup_coro
 from background import update_group_members, update_items_name, build_maps
 
@@ -73,7 +73,8 @@ def create_bot(redis):
     callbacks = [
         (gabbia_choice, 'gabbiaclick-(\w+|\d+)'),
         (stats_choice_phase1, '^stats1click-(.+)'),
-        (stats_choice_phase2, 'stats2click-(.+)')
+        (stats_choice_phase2, 'stats2click-(.+)'),
+        (map_next, 'mapclick-(.+)')
     ]
 
     for fn, re in commands:

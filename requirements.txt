@@ -1,3 +1,4 @@
 aiotg
 aioredis
 ipython
+emoji

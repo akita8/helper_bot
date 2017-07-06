@@ -97,8 +97,10 @@ async def build_maps(bot, redis):
                         except ValueError:
                             continue
             if reply:
-                private_chat = bot.private(await redis.hget(user, 'user_id'))
-                await private_chat.send_text(reply, parse_mode='Markdown')
+                id_ = await redis.hget(user, 'user_id')
+                if id_:
+                    private_chat = bot.private(id_)
+                    await private_chat.send_text(reply, parse_mode='Markdown')
             not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
             dungeon_ttl = await redis.ttl(key)
             remaining = ':'.join(not_processed)
