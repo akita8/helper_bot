@@ -5,7 +5,7 @@ import logging
 from utils import Config, ErrorReply
 
 
-logger = logging.getLogger('decorators')
+logger = logging.getLogger(__name__)
 
 
 def restricted(redis):

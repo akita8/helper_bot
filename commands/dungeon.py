@@ -84,7 +84,7 @@ async def get_map(chat, **kwargs):
     if len(args) == 2:
         name, num = args
         if name in Config.DUNGEONS_ACRONYMS:
-            active_dungeon = Config.DUNGEONS_ACRONYMS[name] + ' ' + num
+            active_dungeon = Config.DUNGEONS_ACRONYMS.get(name)
         else:
             return chat.reply(f"Errore!\nLa sigla dungeon che mi ha mandato non esiste!\n"
                               f"Opzioni valide: {', '.join(Config.DUNGEONS_ACRONYMS.keys())}")
@@ -114,7 +114,7 @@ async def next_room(chat, **kwargs):
         position = int(await redis.hget(sender, 'position')) + 1 if not arg else int(arg[0])
     except ValueError:
         return chat.reply("Errore!\n L'argomento del comando deve essere un numero!")
-    if position > int(Config.DUNGEONS_LENGTH.get(' '.join(active_dungeon.split(' ')[:-1]))):
+    if position > dungeon_len(active_dungeon):
         return await chat.reply('Errore!\n La stanza richiesta è maggiore ')
     dungeon_map = literal_eval(await redis.get(f"map:{active_dungeon}"))
     await redis.hset(sender, 'position', position)
