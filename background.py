@@ -3,7 +3,7 @@ from ast import literal_eval
 from logging import getLogger
 from datetime import timedelta
 
-from utils import Config, SolverData, dungeon_len, stringify_dungeon_room
+from utils import Config, SolverData, stringify_dungeon_room
 from deco import periodic, setup_coro
 
 
@@ -98,20 +98,22 @@ async def build_maps(bot, redis):
                             continue
             if reply:
                 id_ = await redis.hget(user, 'user_id')
-                if id_:
-                    private_chat = bot.private(id_)
-                    await private_chat.send_text(reply, parse_mode='Markdown')
-                    new_position = number + 1
-                    if number < len(dungeon_map):
-                        next_room = dungeon_map[number]
-                        await redis.hset(user, 'position', new_position)
-                        if not number > dungeon_len(dungeon_name) and any(next_room):
-                            private_chat.send_text(
-                                stringify_dungeon_room(new_position, *next_room),
-                                parse_mode='Markdown')
+                private_chat = bot.private(id_)
+                await private_chat.send_text(reply, parse_mode='Markdown')
+                new_position = number + 1
+                if number < len(dungeon_map):
+                    next_room = dungeon_map[number]
+                    await redis.hset(user, 'position', new_position)
+                    if any(next_room):
+                        await private_chat.send_text(
+                            stringify_dungeon_room(new_position, *next_room),
+                            parse_mode='Markdown')
             not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
             dungeon_ttl = await redis.ttl(key)
             remaining = ':'.join(not_processed)
-            await redis.setex(key, int(dungeon_ttl), remaining + ':' if remaining else '')
+            await redis.setex(
+                key,
+                dungeon_ttl if dungeon_ttl > 1 else int(timedelta(days=2, hours=7).total_seconds()),
+                remaining + ':' if remaining else '')
         map_ttl = await redis.ttl(map_key)
         await redis.setex(map_key, map_ttl if map_ttl > 1 else int(timedelta(days=7).total_seconds()), str(dungeon_map))
