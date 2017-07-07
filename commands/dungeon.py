@@ -1,7 +1,7 @@
 from datetime import timedelta
 from ast import literal_eval
 
-from utils import Config, dungeon_len, stringify_dungeon_room, is_number, map_directions
+from utils import Config, dungeon_len, stringify_dungeon_room, is_number, map_directions, ErrorReply
 from deco import must_be_forwarded_message, must_have_active_dungeon, strict_args_num
 
 
@@ -76,11 +76,10 @@ async def log_user_position(chat, **kwargs):
     return await redis.append(f"dungeon:{active_dungeon}", f"{sender},{chat.message.get('forward_date')},{position}:")
 
 
-@must_have_active_dungeon
 async def get_map(chat, **kwargs):
     redis = kwargs.get('redis')
     args = kwargs.get('info').get('args')
-    active_dungeon = kwargs.get('active_dungeon')
+    active_dungeon = await redis.hget(kwargs.get('info').get('username'), 'active_dungeon')
     if len(args) == 2:
         name, num = args
         if name in Config.DUNGEONS_ACRONYMS:
@@ -92,6 +91,8 @@ async def get_map(chat, **kwargs):
             active_dungeon += ' ' + num
         else:
             return chat.reply(f"Errore!\n{num} non è un numero!")
+    elif not active_dungeon:
+        return await chat.reply(ErrorReply.NO_ACTIVE_DUNGEONS)
     map_string = await redis.get(f'map:{active_dungeon}')
     if not map_string:
         return await chat.reply('La mappa del dungeon che hai richiesto non esiste!')
