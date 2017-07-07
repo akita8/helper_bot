@@ -20,13 +20,10 @@ def restricted(redis):
             command = chat.message['text']
             base_info = {'username': sender}
             for g in Config.ALLOWED_GROUPS:
-                logger.info(f"{chat.is_group()} {chat.message.get('chat').get('title')}")
                 info = {**base_info, 'group': g, 'args': command.split(' ')[1:]}
-                if chat.is_group() and g in chat.message['chat']['title']:
-                    logger.info(f"user->{sender} group->{g} command->{func.__name__}")
-                    return await func(chat, match=match, info=info, redis=redis, cb_query=cb_query)
-                elif await redis.sismember(g, sender):
-                    logger.info(f"user->{sender} private command->{func.__name__}")
+                is_group = chat.is_group() or chat.type == 'supergroup'
+                if (is_group and g in chat.message['chat']['title']) or await redis.sismember(g, sender):
+                    logger.info(f"user->{sender} {chat.type}->{g} command->{func.__name__}")
                     return await func(chat, match=match, info=info, redis=redis, cb_query=cb_query)
             logger.info(f"{chat.sender.get('username')} tried to use the bot!")
             return await chat.reply('Questo è un bot per uso privato, mi spiace non sei autorizzato!')
