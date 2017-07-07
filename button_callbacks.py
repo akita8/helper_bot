@@ -86,3 +86,27 @@ async def map_next(chat, **kwargs):
         printable_map += stringify_dungeon_room(i+1, *level)
     await chat.edit_text(chat.message.get('message_id'), printable_map, parse_mode='Markdown')
     await chat.edit_reply_markup(chat.message.get('message_id'), markup)
+
+
+async def dungeon_exchange(chat, **kwargs):
+    redis = kwargs.get('redis')
+    sender, receiver, dungeon = kwargs.get('match').group(1).split(':')
+    await redis.hset(sender, 'active_dungeon', '')
+    await chat.edit_text(
+        chat.message.get('message_id'),
+        f'Sei uscito da {dungeon} e ho mandato una richiesta a {receiver}')
+    receiver_user_id = await redis.hget(receiver, 'user_id')
+    chat.id = receiver_user_id
+    markup = markup_inline_keyboard(
+        [[('si', f'confirmtradeclick-si:{receiver}:{dungeon}'), ('no', f'confirmtradeclick-no:{receiver}:{dungeon}')]])
+    await chat.send_text(f'{sender} dice di averti messo in {dungeon}, confermi?', reply_markup=markup)
+
+
+async def confirm_trade(chat, **kwargs):
+    redis = kwargs.get('redis')
+    response, receiver, dungeon = kwargs.get('match').group(1).split(':')
+    if response == 'si':
+        await redis.hset(receiver, 'active_dungeon', dungeon)
+        await chat.edit_text(chat.message.get('message_id'), f'Sei stato aggiunto al dungeon {dungeon}')
+    else:
+        await chat.edit_text( chat.message.get('message_id'), 'Ok non sei stato aggiunto!')

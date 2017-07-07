@@ -1,7 +1,8 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from ast import literal_eval
 
-from utils import Config, dungeon_len, stringify_dungeon_room, is_number, map_directions, ErrorReply
+from utils import Config, dungeon_len, stringify_dungeon_room, is_number, map_directions, ErrorReply, \
+    markup_inline_keyboard
 from deco import must_be_forwarded_message, must_have_active_dungeon, strict_args_num
 
 
@@ -24,18 +25,24 @@ async def set_dungeon(chat, **kwargs):
 async def close_dungeon(chat, **kwargs):
     redis = kwargs.get('redis')
     info = kwargs.get('info')
-    args = info.get('args')
     sender = info.get('username')
-    dungeon_name = await redis.hget(sender, 'active_dungeon')
-    if len(args) == 1:
-        receiver = args[0]
-        if await redis.sismember(info.get('group'), receiver):
-            await redis.hmset_dict(receiver, {'active_dungeon': dungeon_name, 'position': 1})
-            await chat.reply(f"Hai scambiato {dungeon_name} con {receiver}")
-        else:
-            return await chat.reply(f"Errore!\n{receiver} non è nel tuo gruppo!")
+    active_dungeon = kwargs.get('active_dungeon')
     await redis.hset(sender, 'active_dungeon', '')
-    await chat.reply(f'Sei uscito da {dungeon_name}')
+    await chat.reply(f'Sei uscito da {active_dungeon}')
+
+
+@must_have_active_dungeon
+async def trade_dungeon(chat, **kwargs):
+    redis = kwargs.get('redis')
+    info = kwargs.get('info')
+    dungeon = kwargs.get('active_dungeon')
+    group = info.get('group')
+    sender = info.get('username')
+    members = [
+        (member, f"tradedgclick-{sender}:{member}:{dungeon}")
+        for member in await redis.smembers(group) if member != sender]
+    markup = markup_inline_keyboard([members[i:i+3] for i in range(0, len(members), 3)])
+    return chat.send_text('A chi vuoi passare il tuo dungeon?', reply_markup=markup)
 
 
 @must_be_forwarded_message
@@ -127,3 +134,30 @@ async def get_current_dungeon(chat, **kwargs):
     redis = kwargs.get('redis')
     sender = kwargs.get('info').get('username')
     await chat.reply(await redis.hget(sender, 'active_dungeon'))
+
+
+@strict_args_num('{}==2')
+async def expire_dungeon(chat, **kwargs):
+    redis = kwargs.get('redis')
+    dungeon_acronym, num = kwargs.get('info').get('args')
+    dungeon_name = Config.DUNGEONS_ACRONYMS.get(dungeon_acronym)
+    if dungeon_name and is_number(num):
+        map_key, dungeon_key = f"map:{dungeon_name} {num}", f"dungeon:{dungeon_name} {num}"
+        map_string = await redis.get(map_key)
+        if map_string and isinstance(map_string, str):
+            await redis.delete(map_key)
+            await redis.delete(dungeon_key)
+            await redis.hset('cancelled_dungeons_maps', str(datetime.now()), map_string)
+            await chat.reply(f'Hai cancellato la mappa del dungeon {dungeon_name}')
+        else:
+            chat.reply(f'Errore!\nNon ho trovato il dungeon {dungeon_name} nel database!')
+    else:
+        return chat.reply(f"Errore!\nLa sigla dungeon che mi ha mandato non esiste o il numero non è valido!\n"
+                          f"Opzioni valide: {', '.join(Config.DUNGEONS_ACRONYMS.keys())}")
+
+
+@must_be_forwarded_message
+async def set_expire_date(chat, **kwargs):
+    pass
+
+

@@ -20,6 +20,7 @@ def restricted(redis):
             command = chat.message['text']
             base_info = {'username': sender}
             for g in Config.ALLOWED_GROUPS:
+                logger.info(f"{chat.is_group()} {chat.message.get('chat').get('title')}")
                 info = {**base_info, 'group': g, 'args': command.split(' ')[1:]}
                 if chat.is_group() and g in chat.message['chat']['title']:
                     logger.info(f"user->{sender} group->{g} command->{func.__name__}")

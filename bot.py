@@ -11,9 +11,9 @@ from utils import Config
 from commands.boss import set_boss, botta, lista_botta
 from commands.riddle_solvers import wordsolver
 from commands.dungeon import set_dungeon, log_user_action, log_user_position, log_user_direction, close_dungeon,\
-    get_map, next_room, get_current_dungeon
+    get_map, next_room, get_current_dungeon, trade_dungeon, expire_dungeon
 from button_callbacks import gabbia_buttons_reply, gabbia_choice, stats_button_reply_phase1,\
-    stats_choice_phase1, stats_choice_phase2, map_next
+    stats_choice_phase1, stats_choice_phase2, map_next, dungeon_exchange, confirm_trade
 from deco import restricted, setup_coro
 from background import update_group_members, update_items_name, build_maps
 
@@ -62,7 +62,9 @@ def create_bot(redis):
         (log_user_position, r'Stanza (\d+)/(\d+)'),
         (log_user_direction, rf"({Config.ARROW_UP}|{Config.ARROW_LEFT}|{Config.ARROW_RIGHT})"),
         (next_room, r'^/next'),
-        (get_current_dungeon, r'/dungeon')
+        (get_current_dungeon, r'^/dungeon'),
+        (trade_dungeon, r'^/scambio'),
+        (expire_dungeon, r'^/cancelladg')
         # (set_alert, r'^/setalert'),
         # (unset_alert, r'^/unsetalert'),
         # (show_alerts, r'^/showalerts'),
@@ -72,9 +74,11 @@ def create_bot(redis):
 
     callbacks = [
         (gabbia_choice, 'gabbiaclick-(\w+|\d+)'),
-        (stats_choice_phase1, '^stats1click-(.+)'),
+        (stats_choice_phase1, 'stats1click-(.+)'),
         (stats_choice_phase2, 'stats2click-(.+)'),
-        (map_next, 'mapclick-(.+)')
+        (map_next, 'mapclick-(.+)'),
+        (dungeon_exchange, 'tradedgclick-(.+)'),
+        (confirm_trade, 'confirmtradeclick-(.+)')
     ]
 
     for fn, re in commands:
