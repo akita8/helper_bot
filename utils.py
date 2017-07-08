@@ -37,9 +37,9 @@ def load_solvers_words():
     return indexed_data, hidden
 
 
-def is_time(time_string):
+def is_time(time_string, date_format='%H:%M'):
     try:
-        datetime.datetime.strptime(time_string.replace('.', ':'), '%H:%M')
+        datetime.datetime.strptime(time_string.replace('.', ':'), date_format)
     except ValueError:
         return False
     return True
@@ -135,21 +135,21 @@ class Config:
         'vecchia': NEUTRAL,
         'due porte': NEUTRAL,
         'aiuta': POSITIVE,
-        'ascia': NEUTRAL,
+        'ascia': emoji.emojize(':dragon_face:', use_aliases=True),
         'desideri': NEUTRAL,
         'fontana': POSITIVE,
         'leve': NEUTRAL,
         'marinaio': NEUTRAL,
-        'mattonella': POSITIVE,
+        'mattonella': emoji.emojize(':dragon_face:', use_aliases=True),
         'meditazione': NEUTRAL,
         "mercante": NEUTRAL,
         "pozzo": NEGATIVE,
         "pulsantiera": NEGATIVE,
-        "monete": POSITIVE,
+        "monete": emoji.emojize(':moneybag:', use_aliases=True),
         'raro': POSITIVE,
         'scrigno': POSITIVE,
         'stanza vuota': POSITIVE,
-        'spada': emoji.emojize(':heavy_dollar_sign:', use_aliases=True),
+        'spada': emoji.emojize(':dollar:', use_aliases=True),
         'predone': NEUTRAL,
         'trappola': NEGATIVE,
         'gabbia': NEUTRAL,

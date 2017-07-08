@@ -8,13 +8,14 @@ from utils import is_time, Config, ErrorReply
 async def set_boss(chat, **kwargs):
     redis = kwargs.get('redis')
     info = kwargs.get('info')
-    key = f"boss:{info.get('group')}"
+    group = info.get('group')
+    key = f"boss:{group}"
     msg = chat.message['text'].split(' ')
     if len(msg) != 3 or msg[1].lower() not in ('titano', 'fenice', 'phoenix'):
         return await chat.reply(ErrorReply.INCORRECT_SYNTAX.format('/setboss titano(o fenice) deadline'))
-    if not is_time(msg[2]):
-        return await chat.reply(ErrorReply.INVALID_TIME)
-    group_members = await redis.smembers(info.get('group'))
+    if not is_time(msg[2], '%d/%m/%Y-%H:%M'):
+        return await chat.reply(ErrorReply.INVALID_TIME + ' formato corretto: giorno/mese/anno-ora:minuti')
+    group_members = await redis.smembers(group)
     fields = {**{member: "" for member in group_members}, **{"boss": msg[1], "deadline": msg[2]}}
     await redis.delete(key)
     await redis.hmset_dict(key, fields)
@@ -26,6 +27,8 @@ async def lista_botta(chat, **kwargs):
     info = kwargs.get('info')
     rv = await redis.hgetall(f"boss:{info.get('group')}")
     if rv:
+        if all(rv.values()) and not any([is_time(v) for k, v in rv.items() if k != 'deadline']):
+            return chat.reply('KILL KILL KILL')
         boss = rv.pop('boss').capitalize()
         deadline = rv.pop('deadline')
         formatted = f'{boss} {deadline}\n\n'
@@ -51,37 +54,42 @@ async def botta(chat, **kwargs):
     info = kwargs.get('info')
     key = f"boss:{info.get('group')}"
     msg = chat.message['text'].split(' ')
-    success_text = f"{info.get('username')} ha dato la botta!"
+    sender = info.get('username')
+    success_text = f"{sender} ha dato la botta!"
     boss_list = await redis.hgetall(key)
+    reply_msg = ''
     if boss_list:
         if len(msg) == 1:
-            await redis.hset(key, info.get('username'), 'ok')
-            return await chat.reply(success_text)
+            boss_list[sender] = 'ok'
+            reply_msg = success_text
         elif msg[1].encode('utf-8') in Config.EMOJI_BYTES:
             negative = emoji.emojize(':x:', use_aliases=True)
             if msg[1] == negative:
                 return await chat.reply('@Meck87 è un pirla!')
-            await redis.hset(key, info.get('username'), msg[1])
-            return await chat.reply(success_text)
+            boss_list[sender] = msg[1]
+            reply_msg = success_text
         elif len(msg) == 2:
             time = msg[1].replace('.', ':')
             try:
                 datetime.strptime(time, '%H:%M')
-                await redis.hset(key, info.get('username'), msg[1])
-                return await chat.reply(f"{info.get('username')} darà la botta alle {time}!")
+                boss_list[sender] = msg[1]
+                reply_msg = f"{sender} darà la botta alle {time}!"
             except ValueError:
-                if chat.is_group():
+                if chat.is_group() or chat.type == 'supergroup':
                     admin_list_raw = await chat.get_chat_administrators()
                     admin_list = [admin['user']['username'] for admin in admin_list_raw['result']]
-                    if info.get('username') in admin_list and msg[1] in boss_list:
-                        await redis.hset(key, msg[1], 'ok')
-                        return await chat.reply(f'{msg[1]} ha dato la botta!')
+                    if sender in admin_list and msg[1] in boss_list:
+                        boss_list[msg[1]] = 'ok'
+                        reply_msg = f'{msg[1]} ha dato la botta!'
                     else:
-                        return await chat.reply('Errore!Non sei un amministratore o il giocatore non è nel gruppo!')
-                return await chat.reply(ErrorReply.INVALID_TIME)
-        else:
-            return await chat.reply(ErrorReply.INCORRECT_SYNTAX.format(f'/botta@{Config.NAME} orario_botta(opzionale)'))
+                        reply_msg = 'Errore!Non sei un amministratore o il giocatore non è nel gruppo!'
+                else:
+                    reply_msg = ErrorReply.INVALID_TIME
     else:
-        chat.reply(f'Errore!\nNon ho trovato boss impostati --> /setboss o /setboss@{Config.NAME}.')
+        reply_msg = f'Errore!\nNon ho trovato boss impostati --> /setboss o /setboss@{Config.NAME}.'
+    await redis.hmset_dict(key, boss_list)
+    await chat.reply(reply_msg)
+    if all(boss_list.values()) and not any([is_time(v) for k, v in boss_list.items() if k != 'deadline']):
+        await chat.send_text('KILL KILL KILL')
 
 

@@ -53,7 +53,7 @@ async def stats_choice_phase2(chat, **kwargs):
         for room in level:
             counter[room] += 1
     tot_rooms = len(dungeon_map) * 3
-    percent_completed = round(((tot_rooms - counter.get('')) / tot_rooms) * 100, 2)
+    percent_completed = round(((tot_rooms - counter.get('') or 0) / tot_rooms) * 100, 2)
     reply = f"{dungeon} {num}\nPercentuale completamento {percent_completed}%\nMonete: {counter.get('monete') or 0}\n" \
             f"Spade: {counter.get('spada') or 0}\nAsce: {counter.get('ascia') or 0}\n" \
             f"Mattonelle: {counter.get('mattonella') or 0}\nStanze vuote: {counter.get('stanza vuota') or 0}\n"
