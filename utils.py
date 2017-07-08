@@ -178,7 +178,7 @@ class SolverData:
 
 
 class ErrorReply:
-    INCORRECT_SYNTAX = 'Errore!\nSintassi corretta:{}'
+    INCORRECT_SYNTAX = 'Errore!\nSintassi corretta: {}'
     INVALID_TIME = 'Errore!\nOrario invalido!'
     WORD_NOT_FOUND = "Non ho trovato nulla:( per favore avvisa un admin così possiamo migliorare il servizio!"
     NO_ACTIVE_DUNGEONS = 'Errore!\nNon hai un dungeon attivo, mandami il messaggio di entrata nel dungeon:)'
