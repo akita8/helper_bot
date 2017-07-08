@@ -74,9 +74,9 @@ def markup_inline_keyboard(buttons, json=True):
 
 
 def stringify_dungeon_room(i, left, up, right):
-    return f"*Stanza*: {i}\n{Config.ARROW_LEFT}{left} {Config.DUNGEONS_EMOJIS.get(left)}\n" \
-           f"{Config.ARROW_UP}{up} {Config.DUNGEONS_EMOJIS.get(up)}\n" \
-           f"{Config.ARROW_RIGHT}{right} {Config.DUNGEONS_EMOJIS.get(right)}\n"
+    return f"*Stanza*: {i}\n{Config.ARROW_LEFT}{left} {Config.DUNGEONS_EMOJIS.get(left.split(' ')[0])}\n" \
+           f"{Config.ARROW_UP}{up} {Config.DUNGEONS_EMOJIS.get(up.split(' ')[0])}\n" \
+           f"{Config.ARROW_RIGHT}{right} {Config.DUNGEONS_EMOJIS.get(right.split(' ')[0])}\n"
 
 
 def map_directions(dungeon, start, end, json=True):

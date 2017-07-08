@@ -85,7 +85,7 @@ async def build_maps(bot, redis):
             reply = ''
             for i, entry in enumerate(entries):
                 event = entry[1]
-                if event in Config.DUNGEONS_ROOMS:
+                if event in Config.DUNGEONS_ROOMS or 'mostro' in event:
                     if i >= 2 and entries[i - 1][1] in Config.DUNGEONS_DIRECTIONS:
                         try:
                             number = int(entries[i - 2][1])

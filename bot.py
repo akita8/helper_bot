@@ -20,7 +20,7 @@ from background import update_group_members, update_items_name, build_maps
 
 logging.basicConfig(
     format='%(asctime)s %(name)-12s %(levelname)-8s %(funcName)s:%(message)s',
-    level=logging.INFO)
+    level=logging.DEBUG)
 logger = logging.getLogger('bot')
 
 
