@@ -14,7 +14,7 @@ async def set_dungeon(chat, **kwargs):
     if await redis.hget(info.get('username'), 'active_dungeon'):
         return await chat.reply('Errore!\nHai gia un dungeon attivo concludilo o scambialo con /quitdg')
     await redis.hmset_dict(info.get('username'),
-                           {'active_dungeon': dungeon_name, 'position': 1})
+                           {'active_dungeon': dungeon_name, 'position': 0})
     await redis.setex('dungeon:' + dungeon_name, int(timedelta(days=2, hours=7).total_seconds()), '')
     if not await redis.exists(f"map:{dungeon_name}"):
         await redis.set(f"map:{dungeon_name}", str([['']*3 for _ in range(dungeon_len(dungeon_name))]))
@@ -137,7 +137,7 @@ async def next_room(chat, **kwargs):
 async def get_current_dungeon(chat, **kwargs):
     redis = kwargs.get('redis')
     sender = kwargs.get('info').get('username')
-    await chat.reply(await redis.hget(sender, 'active_dungeon'))
+    await chat.reply(kwargs.get('active_dungeon'))
 
 
 @strict_args_num('{}==2')
@@ -158,6 +158,22 @@ async def expire_dungeon(chat, **kwargs):
     else:
         return chat.reply(f"Errore!\nLa sigla dungeon che mi ha mandato non esiste o il numero non è valido!\n"
                           f"Opzioni valide: {', '.join(Config.DUNGEONS_ACRONYMS.keys())}")
+
+
+@must_have_active_dungeon
+async def map_todo(chat, **kwargs):
+    def completion_visualization(level, num):
+        vis = f"{num if len(num)==2 else '0'+num}. "
+        for direction in level:
+            vis += Config.CHECK if direction else Config.CROSS
+        return vis
+    redis = kwargs.get('redis')
+    active_dungeon = kwargs.get('active_dungeon')
+    dungeon_map = literal_eval(await redis.get(f"map:{active_dungeon}"))
+    printable_map = \
+        active_dungeon + '\n\n' + \
+        '\n'.join([completion_visualization(level, str(i+1)) for i, level in enumerate(dungeon_map)])
+    await chat.reply(printable_map)
 
 
 @must_be_forwarded_message

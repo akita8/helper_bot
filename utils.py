@@ -74,9 +74,11 @@ def markup_inline_keyboard(buttons, json=True):
 
 
 def stringify_dungeon_room(i, left, up, right):
-    return f"*Stanza*: {i}\n{Config.ARROW_LEFT}{left} {Config.DUNGEONS_EMOJIS.get(left.split(' ')[0])}\n" \
-           f"{Config.ARROW_UP}{up} {Config.DUNGEONS_EMOJIS.get(up.split(' ')[0])}\n" \
-           f"{Config.ARROW_RIGHT}{right} {Config.DUNGEONS_EMOJIS.get(right.split(' ')[0])}\n"
+    def room_emoji(room):
+        return Config.DUNGEONS_EMOJIS.get(room) if 'mostro' not in room else Config.DUNGEONS_EMOJIS.get('mostro')
+    return f"*Stanza*: {i}\n{Config.ARROW_LEFT}{left} {room_emoji(left)}\n" \
+           f"{Config.ARROW_UP}{up} {room_emoji(up)}\n" \
+           f"{Config.ARROW_RIGHT}{right} {room_emoji(right)}\n"
 
 
 def map_directions(dungeon, start, end, json=True):
@@ -102,6 +104,8 @@ class Config:
     NEUTRAL = emoji.emojize(':full_moon_with_face:', use_aliases=True)
     POSITIVE = emoji.emojize(':green_heart:', use_aliases=True)
     NEGATIVE = emoji.emojize(':red_circle:', use_aliases=True)
+    CROSS = emoji.emojize(':x:', use_aliases=True)
+    CHECK = emoji.emojize(':white_check_mark:', use_aliases=True)
     DUNGEONS_RE = {
         'Incontri un': 'mostro',
         'Aprendo la porta ti ritrovi in un ambiente aperto,': 'vecchia',

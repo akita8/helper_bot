@@ -32,10 +32,8 @@ async def lista_botta(chat, **kwargs):
         boss = rv.pop('boss').capitalize()
         deadline = rv.pop('deadline')
         formatted = f'{boss} {deadline}\n\n'
-        negative = emoji.emojize(':x:', use_aliases=True)
-        positive = emoji.emojize(':white_check_mark:', use_aliases=True)
         for username, status in rv.items():
-            em = positive if status == 'ok' else status if status else negative
+            em = Config.CHECK if status == 'ok' else status if status else Config.CROSS
             if em.encode('utf-8') not in Config.EMOJI_BYTES:
                 warning = emoji.emojize(':warning:', use_aliases=True)
                 formatted += warning + f' *{username}*: {em}\n'
@@ -43,7 +41,7 @@ async def lista_botta(chat, **kwargs):
                 line = f'{username}: {em}\n'
                 if '/listabottatag' in chat.message['text']:
                     line = '@' + line if not status else line
-                formatted += line if em != negative else emoji.emojize(':exclamation:', use_aliases=True) + line
+                formatted += line if em != Config.CROSS else emoji.emojize(':exclamation:', use_aliases=True) + line
         return await chat.send_text(formatted, parse_mode='Markdown')
     else:
         chat.reply(f'Errore!\nNon ho trovato boss impostati --> /setboss o /setboss@{Config.NAME}.')
