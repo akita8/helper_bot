@@ -70,7 +70,12 @@ async def build_maps(bot, redis):
     async for key in redis.iscan(match='dungeon:*'):
         dungeon_name = key.split(':')[1]
         map_key = f'map:{dungeon_name}'
-        dungeon_map = literal_eval(await redis.get(map_key))
+        try:
+            dungeon_map = literal_eval(await redis.get(map_key))
+        except ValueError:
+            await redis.delete(key)
+            logger.warning(f'mappa non trovata di {map_key}')
+            continue
         dungeon_string = await redis.get(key)
         dungeon = []
         for line in dungeon_string.split(':')[:-1]:

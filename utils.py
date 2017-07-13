@@ -76,7 +76,7 @@ def markup_inline_keyboard(buttons, json=True):
 def stringify_dungeon_room(i, left, up, right):
     def room_emoji(room):
         return Config.DUNGEONS_EMOJIS.get(room) if 'mostro' not in room else Config.DUNGEONS_EMOJIS.get('mostro')
-    return f"*Stanza*: {i}\n{Config.ARROW_LEFT}{left} {room_emoji(left)}\n" \
+    return f"*Stanza*: *{i}*\n{Config.ARROW_LEFT}{left} {room_emoji(left)}\n" \
            f"{Config.ARROW_UP}{up} {room_emoji(up)}\n" \
            f"{Config.ARROW_RIGHT}{right} {room_emoji(right)}\n"
 

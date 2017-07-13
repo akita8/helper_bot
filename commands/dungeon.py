@@ -151,7 +151,7 @@ async def expire_dungeon(chat, **kwargs):
         if map_string and isinstance(map_string, str):
             await redis.delete(map_key)
             await redis.delete(dungeon_key)
-            await redis.hset('cancelled_dungeons_maps', str(datetime.now()), map_string)
+            await redis.hset('cancelled_dungeons_maps', map_key + ':' + str(datetime.now()), map_string)
             await chat.reply(f'Hai cancellato la mappa del dungeon {dungeon_name}')
         else:
             chat.reply(f'Errore!\nNon ho trovato il dungeon {dungeon_name} nel database!')
