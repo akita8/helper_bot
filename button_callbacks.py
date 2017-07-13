@@ -1,3 +1,4 @@
+from logging import getLogger
 from ast import literal_eval
 from collections import defaultdict
 
@@ -5,6 +6,9 @@ from collections import defaultdict
 from utils import markup_inline_keyboard, Config, stringify_dungeon_room, map_directions
 from commands.riddle_solvers import namesolver
 from commands.dungeon import log_user_action
+
+
+logger = getLogger(__name__)
 
 
 async def gabbia_buttons_reply(chat, **_):
@@ -64,8 +68,11 @@ async def map_next(chat, **kwargs):
     dungeon, start, end, scroll_direction = kwargs.get('match').group(1).split(':')
     start, end = int(start), int(end)
     redis = kwargs.get('redis')
-    dungeon_map = literal_eval(await redis.get(f'map:{dungeon}'))
-
+    try:
+        dungeon_map = literal_eval(await redis.get(f'map:{dungeon}'))
+    except ValueError:
+        logger.warning(f'mappa non trovata map:{dungeon}')
+        return await chat.send_text("Non trovo piu questa mappa è possibile che qualcuno l' abbia archiviata")
     if scroll_direction == 'down':
         start += 5
         end += 5

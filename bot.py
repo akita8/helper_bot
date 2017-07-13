@@ -53,7 +53,7 @@ def create_bot(redis):
         (set_boss, r'^/setboss'),
         (botta, r'^/botta'),
         (lista_botta, r'^/listabotta'),
-        (wordsolver, r'^Sul portone del rifugio vi è una piccola pulsantiera'),
+        (wordsolver, r'^Sul portone del rifugio'),
         (gabbia_buttons_reply, r'^Attenzione! Appena messo piede nella stanza'),
         (stats_button_reply_phase1, '^/stats'),
         (set_dungeon, r'^Sei stato aggiunto alla Lista Avventurieri del dungeon (.*)!'),
