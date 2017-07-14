@@ -115,7 +115,7 @@ async def confirm_trade(chat, **kwargs):
     redis = kwargs.get('redis')
     response, receiver, position, dungeon = kwargs.get('match').group(1).split(':')
     if response == 'si':
-        await redis.hset_dict(receiver, {'active_dungeon': dungeon, 'position': position})
+        await redis.hmset_dict(receiver, {'active_dungeon': dungeon, 'position': position})
         await chat.edit_text(chat.message.get('message_id'), f'Sei stato aggiunto al dungeon {dungeon}')
     else:
         await chat.edit_text( chat.message.get('message_id'), 'Ok non sei stato aggiunto!')
