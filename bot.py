@@ -23,9 +23,6 @@ logging.basicConfig(
 logger = logging.getLogger('bot')
 
 
-def config_and_dict_exist():
-    return BotConfig.check() and SolverData.check()
-
 async def stop_loop(loop, redis):
     await asyncio.sleep(0.05)
     redis.close()
@@ -55,7 +52,6 @@ def create_bot(redis):
         (set_boss, r'^/setboss'),
         (botta, r'^/botta'),
         (lista_botta, r'^/listabotta'),
-        (wordsolver, r'^Sul portone del rifugio'),
         (gabbia_buttons_reply, r'^Attenzione! Appena messo piede nella stanza'),
         (stats_button_reply_phase1, '^/stats'),
         (set_dungeon, r'^Sei stato aggiunto alla Lista Avventurieri del dungeon (.*)!'),
@@ -72,6 +68,10 @@ def create_bot(redis):
         # (unset_alert, r'^/unsetalert'),
         # (show_alerts, r'^/showalerts'),
     ]
+
+    if SolverData.check():
+        commands += (wordsolver, r'^Sul portone del rifugio')
+
     dungeon_commands = [(log_user_action, '^'+string) for string in Dungeon.RE]
     commands += dungeon_commands
 
@@ -106,7 +106,7 @@ def create_tasks(loop, redis):
 
 
 def run_bot():
-    if config_and_dict_exist():
+    if BotConfig.check():
         loop = asyncio.get_event_loop()
 
         logger.info('creating redis connection')
