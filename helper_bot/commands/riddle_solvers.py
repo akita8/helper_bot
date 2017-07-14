@@ -1,6 +1,6 @@
 import asyncio
 
-from utils import SolverData, ErrorReply
+from helper_bot.settings import SolverData, ErrorReply
 
 
 async def namesolver(chat, **kwargs):

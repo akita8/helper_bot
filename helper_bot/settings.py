@@ -1,10 +1,13 @@
-import os
 import configparser
-import datetime
+import os
 
-from json import dumps
+from logging import getLogger
 
 import emoji
+
+from .utils import markup_inline_keyboard
+
+logger = getLogger(__name__)
 
 
 def load_user_config():
@@ -12,17 +15,21 @@ def load_user_config():
     try:
         config.read('config.ini') or config.read(os.environ['CONFIG_FILE'])
     except KeyError:
-        print('config file NOT FOUND')
-        exit()
+        logger.error('config file NOT FOUND')
+        return None, None, None
     return config['BOT']['allowed groups'].split(','), config['BOT']['name'], config['BOT']['token']
 
 
 def load_solvers_words():
     with open('hidden_items.txt') as f:
         hidden = f.read().split('\n')
-    with open('ITA5-12.txt', encoding='ISO-8859-1') as f:
-        data = f.read().split('\n')
-        data.pop(-1)
+    try:
+        with open('ITA5-12.txt', encoding='ISO-8859-1') as f:
+            data = f.read().split('\n')
+            data.pop(-1)
+    except FileNotFoundError:
+        logger.error('dictionary file NOT FOUND')
+        return None, None
 
     indexed_data = {}
     for word in data:
@@ -37,66 +44,39 @@ def load_solvers_words():
     return indexed_data, hidden
 
 
-def is_time(time_string, date_format='%H:%M'):
-    try:
-        datetime.datetime.strptime(time_string.replace('.', ':'), date_format)
-    except ValueError:
-        return False
-    return True
+class SolverData:
+
+    WORDS_ITA, HIDDEN_ITEMS_NAMES = load_solvers_words()
+
+    @classmethod
+    def check(cls):
+        return all((cls.WORDS_ITA, cls.HIDDEN_ITEMS_NAMES))
 
 
-def is_number(number):
-    try:
-        int(number)
-    except ValueError:
-        return False
-    return True
-
-
-def dungeon_len(name):
-    dungeon_name = ' '.join(name.split(' ')[:-1])
-    return Config.DUNGEONS_LENGTH[dungeon_name]
-
-
-def markup_inline_keyboard(buttons, json=True):
-    markup = {
-        'type': 'InlineKeyboardMarkup',
-        'inline_keyboard': []}
-    for button_level in buttons:
-        formatted_level = []
-        for button in button_level:
-            text, cb_data = button
-            formatted_level.append({'type': 'InlineKeyboardButton', 'text': text, 'callback_data': cb_data})
-        markup['inline_keyboard'].append(formatted_level)
-    if json:
-        return dumps(markup)
-    return markup
-
-
-def stringify_dungeon_room(i, left, up, right):
-    def room_emoji(room):
-        return Config.DUNGEONS_EMOJIS.get(room) if 'mostro' not in room else Config.DUNGEONS_EMOJIS.get('mostro')
-    return f"---*Stanza*: *{i}*---\n{Config.ARROW_LEFT} {left} {room_emoji(left)}\n" \
-           f"{Config.ARROW_UP} {up} {room_emoji(up)}\n" \
-           f"{Config.ARROW_RIGHT} {right} {room_emoji(right)}\n"
-
-
-def map_directions(dungeon, start, end, json=True):
-    return markup_inline_keyboard(
-        [[(emoji.emojize(":arrow_double_up:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:up")],
-         [(emoji.emojize(":arrow_double_down:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:down")]],
-        json=json)
-
-
-class Config:
+class BotConfig:
 
     ALLOWED_GROUPS, NAME, TOKEN = load_user_config()
 
-    ITEMS_URL = 'http://fenixweb.net:3300/api/v1/items'
-    GROUP_URL = 'http://fenixweb.net:3300/api/v1/team/'
-    SHOPS_URL = 'http://fenixweb.net:3300/api/v1/updatedshops/1'
+    @classmethod
+    def check(cls):
+        return all((cls.ALLOWED_GROUPS, cls.NAME, cls.TOKEN))
 
-    EMOJI_BYTES = [e.replace(' ', '').encode('utf-8') for e in emoji.UNICODE_EMOJI]
+
+class ErrorReply:
+    INCORRECT_SYNTAX = 'Errore!\nSintassi corretta: {}'
+    INVALID_TIME = 'Errore!\nOrario invalido!'
+    WORD_NOT_FOUND = "Non ho trovato nulla:( per favore avvisa un admin così possiamo migliorare il servizio!"
+    NO_ACTIVE_DUNGEONS = 'Errore!\nNon hai un dungeon attivo, mandami il messaggio di entrata nel dungeon:)'
+
+
+class Url:
+    ITEMS = 'http://fenixweb.net:3300/api/v1/items'
+    GROUP = 'http://fenixweb.net:3300/api/v1/team/'
+    SHOPS = 'http://fenixweb.net:3300/api/v1/updatedshops/1'
+
+
+class Emoji:
+    BYTES = [e.replace(' ', '').encode('utf-8') for e in emoji.UNICODE_EMOJI]
 
     ARROW_UP = emoji.emojize(':arrow_up:', use_aliases=True)
     ARROW_LEFT = emoji.emojize(':arrow_left:', use_aliases=True)
@@ -106,7 +86,10 @@ class Config:
     NEGATIVE = emoji.emojize(':red_circle:', use_aliases=True)
     CROSS = emoji.emojize(':x:', use_aliases=True)
     CHECK = emoji.emojize(':white_check_mark:', use_aliases=True)
-    DUNGEONS_RE = {
+
+
+class Dungeon:
+    RE = {
         'Incontri un': 'mostro',
         'Aprendo la porta ti ritrovi in un ambiente aperto,': 'vecchia',
         'Oltrepassando la porta ti trovi davanti ad altre due porte': 'due porte',
@@ -133,34 +116,34 @@ class Config:
         "Vedi un Nano della terra di Grumpi e ti chiedi": 'trappola',
         "Uno strano pulsante rosso come un pomodoro ti incuriosisce": 'trappola',
     }
-    DUNGEONS_EMOJIS = {
+    EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
-        'tributo': NEGATIVE,
-        'vecchia': NEUTRAL,
-        'due porte': NEUTRAL,
-        'aiuta': POSITIVE,
+        'tributo': Emoji.NEGATIVE,
+        'vecchia': Emoji.NEUTRAL,
+        'due porte': Emoji.NEUTRAL,
+        'aiuta': Emoji.POSITIVE,
         'ascia': emoji.emojize(':dragon_face:', use_aliases=True),
-        'desideri': NEUTRAL,
-        'fontana': POSITIVE,
-        'leve': NEUTRAL,
-        'marinaio': NEUTRAL,
+        'desideri': Emoji.NEUTRAL,
+        'fontana': Emoji.POSITIVE,
+        'leve': Emoji.NEUTRAL,
+        'marinaio': Emoji.NEUTRAL,
         'mattonella': emoji.emojize(':dragon_face:', use_aliases=True),
-        'meditazione': NEUTRAL,
-        "mercante": NEUTRAL,
-        "pozzo": NEGATIVE,
-        "pulsantiera": NEGATIVE,
+        'meditazione': Emoji.NEUTRAL,
+        "mercante": Emoji.NEUTRAL,
+        "pozzo": Emoji.NEGATIVE,
+        "pulsantiera": Emoji.NEGATIVE,
         "monete": emoji.emojize(':moneybag:', use_aliases=True),
-        'raro': POSITIVE,
-        'scrigno': POSITIVE,
-        'stanza vuota': POSITIVE,
+        'raro': Emoji.POSITIVE,
+        'scrigno': Emoji.POSITIVE,
+        'stanza vuota': Emoji.POSITIVE,
         'spada': emoji.emojize(':dollar:', use_aliases=True),
-        'predone': NEUTRAL,
-        'trappola': NEGATIVE,
-        'gabbia': NEUTRAL,
+        'predone': Emoji.NEUTRAL,
+        'trappola': Emoji.NEGATIVE,
+        'gabbia': Emoji.NEUTRAL,
         '': emoji.emojize(':question:', use_aliases=True)
     }
-    DUNGEONS_ROOMS = set(DUNGEONS_RE.values()).union({'gabbia'})
-    DUNGEONS_LENGTH = {
+    ROOMS = set(RE.values()).union({'gabbia'})
+    LENGTH = {
         "Il Burrone Oscuro": 10,
         "La Grotta Infestata": 15,
         "Il Vulcano Impetuoso": 20,
@@ -171,18 +154,26 @@ class Config:
         "La Vetta delle Anime": 50,
         "Il Lago Evanescente": 55,
     }
-    DUNGEONS_ACRONYMS = {''.join([w[0].lower() for w in key.split(' ')][1:]): key for key in DUNGEONS_LENGTH}
-    DUNGEONS_DIRECTIONS = {ARROW_LEFT: 0, ARROW_UP: 1, ARROW_RIGHT: 2}
-    DUNGEON_MARKUP = markup_inline_keyboard([[(key, f"stats1click-{key}")] for key in DUNGEONS_LENGTH])
+    ACRONYMS = {''.join([w[0].lower() for w in key.split(' ')][1:]): key for key in LENGTH}
+    DIRECTIONS = {Emoji.ARROW_LEFT: 0, Emoji.ARROW_UP: 1, Emoji.ARROW_RIGHT: 2}
+    MARKUP = markup_inline_keyboard([[(key, f"stats1click-{key}")] for key in LENGTH])
 
+    @staticmethod
+    def length(name):
+        dungeon_name = ' '.join(name.split(' ')[:-1])
+        return Dungeon.LENGTH[dungeon_name]
 
-class SolverData:
+    @staticmethod
+    def stringify_room(i, left, up, right):
+        def room_emoji(room):
+            return Dungeon.EMOJIS.get(room) if 'mostro' not in room else Dungeon.EMOJIS.get('mostro')
+        return f"---*Stanza*: *{i}*---\n{Emoji.ARROW_LEFT} {left} {room_emoji(left)}\n" \
+               f"{Emoji.ARROW_UP} {up} {room_emoji(up)}\n" \
+               f"{Emoji.ARROW_RIGHT} {right} {room_emoji(right)}\n"
 
-    WORDS_ITA, HIDDEN_ITEMS_NAMES = load_solvers_words()
-
-
-class ErrorReply:
-    INCORRECT_SYNTAX = 'Errore!\nSintassi corretta: {}'
-    INVALID_TIME = 'Errore!\nOrario invalido!'
-    WORD_NOT_FOUND = "Non ho trovato nulla:( per favore avvisa un admin così possiamo migliorare il servizio!"
-    NO_ACTIVE_DUNGEONS = 'Errore!\nNon hai un dungeon attivo, mandami il messaggio di entrata nel dungeon:)'
+    @staticmethod
+    def map_directions(dungeon, start, end, json=True):
+        return markup_inline_keyboard(
+            [[(emoji.emojize(":arrow_double_up:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:up")],
+             [(emoji.emojize(":arrow_double_down:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:down")]],
+            json=json)

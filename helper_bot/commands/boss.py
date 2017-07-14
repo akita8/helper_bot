@@ -2,7 +2,8 @@ from datetime import datetime
 
 import emoji
 
-from utils import is_time, Config, ErrorReply
+from helper_bot.settings import Emoji, ErrorReply
+from helper_bot.utils import is_time
 
 
 async def set_boss(chat, **kwargs):
@@ -33,18 +34,18 @@ async def lista_botta(chat, **kwargs):
         deadline = rv.pop('deadline')
         formatted = f'{boss} {deadline}\n\n'
         for username, status in rv.items():
-            em = Config.CHECK if status == 'ok' else status if status else Config.CROSS
-            if em.encode('utf-8') not in Config.EMOJI_BYTES:
+            em = Emoji.CHECK if status == 'ok' else status if status else Emoji.CROSS
+            if em.encode('utf-8') not in Emoji.BYTES:
                 warning = emoji.emojize(':warning:', use_aliases=True)
                 formatted += warning + f' *{username}*: {em}\n'
             else:
                 line = f'{username}: {em}\n'
                 if '/listabottatag' in chat.message['text']:
                     line = '@' + line if not status else line
-                formatted += line if em != Config.CROSS else emoji.emojize(':exclamation:', use_aliases=True) + line
+                formatted += line if em != Emoji.CROSS else emoji.emojize(':exclamation:', use_aliases=True) + line
         return await chat.send_text(formatted, parse_mode='Markdown')
     else:
-        chat.reply(f'Errore!\nNon ho trovato boss impostati --> /setboss o /setboss@{Config.NAME}.')
+        chat.reply(f'Errore!\nNon ho trovato boss impostati --> /setboss.')
 
 
 async def botta(chat, **kwargs):
@@ -60,7 +61,7 @@ async def botta(chat, **kwargs):
         if len(msg) == 1:
             boss_list[sender] = 'ok'
             reply_msg = success_text
-        elif msg[1].encode('utf-8') in Config.EMOJI_BYTES:
+        elif msg[1].encode('utf-8') in Emoji.BYTES:
             negative = emoji.emojize(':x:', use_aliases=True)
             if msg[1] == negative:
                 return await chat.reply('@Meck87 è un pirla!')
@@ -84,8 +85,9 @@ async def botta(chat, **kwargs):
                 else:
                     reply_msg = ErrorReply.INVALID_TIME
     else:
-        reply_msg = f'Errore!\nNon ho trovato boss impostati --> /setboss o /setboss@{Config.NAME}.'
-    await redis.hmset_dict(key, boss_list)
+        reply_msg = f'Errore!\nNon ho trovato boss impostati --> /setboss'
+    if boss_list:
+        await redis.hmset_dict(key, boss_list)
     await chat.reply(reply_msg)
     if all(boss_list.values()) and not any([is_time(v) for k, v in boss_list.items() if k != 'deadline']):
         await chat.send_text('KILL KILL KILL')

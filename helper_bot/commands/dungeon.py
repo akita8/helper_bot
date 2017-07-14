@@ -1,9 +1,10 @@
-from datetime import timedelta, datetime
 from ast import literal_eval
+from datetime import timedelta, datetime
 
-from utils import Config, dungeon_len, stringify_dungeon_room, is_number, map_directions, ErrorReply, \
-    markup_inline_keyboard
-from deco import must_be_forwarded_message, must_have_active_dungeon, strict_args_num
+from helper_bot.decorators import must_be_forwarded_message, must_have_active_dungeon, strict_args_num
+
+from helper_bot.settings import Emoji, ErrorReply, Dungeon
+from helper_bot.utils import markup_inline_keyboard, is_number
 
 
 @must_be_forwarded_message
@@ -17,7 +18,7 @@ async def set_dungeon(chat, **kwargs):
                            {'active_dungeon': dungeon_name, 'position': 0})
     await redis.setex('dungeon:' + dungeon_name, int(timedelta(days=2, hours=7).total_seconds()), '')
     if not await redis.exists(f"map:{dungeon_name}"):
-        await redis.set(f"map:{dungeon_name}", str([['']*3 for _ in range(dungeon_len(dungeon_name))]))
+        await redis.set(f"map:{dungeon_name}", str([['']*3 for _ in range(Dungeon.length(dungeon_name))]))
     await chat.reply(f'{dungeon_name} è il tuo dungeon attivo ora!')
 
 
@@ -55,7 +56,7 @@ async def log_user_action(chat, **kwargs):
     active_dungeon = kwargs.get('active_dungeon')
     await redis.hsetnx(sender, 'user_id', chat.message['chat'].get('id'))
     dungeon_room = info.get('dungeon_room')
-    dungeon_room = dungeon_room if dungeon_room else Config.DUNGEONS_RE.get(match.group(0))
+    dungeon_room = dungeon_room if dungeon_room else Dungeon.RE.get(match.group(0))
     if dungeon_room == 'mostro':
         level_loc = chat.message['entities'][1]
         level = chat.message['text'][level_loc.get('offset'):level_loc.get('offset') + level_loc.get('length')]
@@ -82,7 +83,7 @@ async def log_user_position(chat, **kwargs):
     position = kwargs.get('match').group(1)
     max_rooms = int(kwargs.get('match').group(2))
     active_dungeon = kwargs.get('active_dungeon')
-    if max_rooms != dungeon_len(active_dungeon):
+    if max_rooms != Dungeon.length(active_dungeon):
         return await chat.reply('Oi mi stai mandando la stanza di un altro dungeon! Pirla!!!')
     return await redis.append(f"dungeon:{active_dungeon}", f"{sender},{chat.message.get('forward_date')},{position}:")
 
@@ -93,11 +94,11 @@ async def get_map(chat, **kwargs):
     active_dungeon = await redis.hget(kwargs.get('info').get('username'), 'active_dungeon')
     if len(args) == 2:
         name, num = args
-        if name in Config.DUNGEONS_ACRONYMS:
-            active_dungeon = Config.DUNGEONS_ACRONYMS.get(name)
+        if name in Dungeon.ACRONYMS:
+            active_dungeon = Dungeon.ACRONYMS.get(name)
         else:
             return chat.reply(f"Errore!\nLa sigla dungeon che mi ha mandato non esiste!\n"
-                              f"Opzioni valide: {', '.join(Config.DUNGEONS_ACRONYMS.keys())}")
+                              f"Opzioni valide: {', '.join(Dungeon.ACRONYMS.keys())}")
         if is_number(num):
             active_dungeon += ' ' + num
         else:
@@ -109,8 +110,8 @@ async def get_map(chat, **kwargs):
         return await chat.reply('La mappa del dungeon che hai richiesto non esiste!')
     dungeon_map = literal_eval(map_string)[:5]
     printable_map = \
-        active_dungeon + '\n\n' + ''.join([stringify_dungeon_room(i, *level) for i, level in enumerate(dungeon_map, 1)])
-    markup = map_directions(active_dungeon, 0, 5)
+        active_dungeon + '\n\n' + ''.join([Dungeon.stringify_room(i, *level) for i, level in enumerate(dungeon_map, 1)])
+    markup = Dungeon.map_directions(active_dungeon, 0, 5)
     return await chat.send_text(printable_map, reply_markup=markup, parse_mode='Markdown')
 
 
@@ -126,17 +127,15 @@ async def next_room(chat, **kwargs):
         position = int(await redis.hget(sender, 'position')) + 1 if not arg else int(arg[0])
     except ValueError:
         return chat.reply("Errore!\n L'argomento del comando deve essere un numero!")
-    if position > dungeon_len(active_dungeon):
+    if position > Dungeon.length(active_dungeon):
         return await chat.reply('Errore!\n La stanza richiesta è maggiore ')
     dungeon_map = literal_eval(await redis.get(f"map:{active_dungeon}"))
     await redis.hset(sender, 'position', position)
-    return await chat.reply(stringify_dungeon_room(position, *dungeon_map[position-1]), parse_mode='Markdown')
+    return await chat.reply(Dungeon.stringify_room(position, *dungeon_map[position-1]), parse_mode='Markdown')
 
 
 @must_have_active_dungeon
 async def get_current_dungeon(chat, **kwargs):
-    redis = kwargs.get('redis')
-    sender = kwargs.get('info').get('username')
     await chat.reply(kwargs.get('active_dungeon'))
 
 
@@ -144,7 +143,7 @@ async def get_current_dungeon(chat, **kwargs):
 async def expire_dungeon(chat, **kwargs):
     redis = kwargs.get('redis')
     dungeon_acronym, num = kwargs.get('info').get('args')
-    dungeon_name = Config.DUNGEONS_ACRONYMS.get(dungeon_acronym)
+    dungeon_name = Dungeon.ACRONYMS.get(dungeon_acronym)
     if dungeon_name and is_number(num):
         map_key, dungeon_key = f"map:{dungeon_name} {num}", f"dungeon:{dungeon_name} {num}"
         map_string = await redis.get(map_key)
@@ -157,7 +156,7 @@ async def expire_dungeon(chat, **kwargs):
             chat.reply(f'Errore!\nNon ho trovato il dungeon {dungeon_name} nel database!')
     else:
         return chat.reply(f"Errore!\nLa sigla dungeon che mi ha mandato non esiste o il numero non è valido!\n"
-                          f"Opzioni valide: {', '.join(Config.DUNGEONS_ACRONYMS.keys())}")
+                          f"Opzioni valide: {', '.join(Dungeon.ACRONYMS.keys())}")
 
 
 @must_have_active_dungeon
@@ -165,7 +164,7 @@ async def map_todo(chat, **kwargs):
     def completion_visualization(level, num):
         vis = f"{num if len(num)==2 else '0'+num}. "
         for direction in level:
-            vis += Config.CHECK if direction else Config.CROSS
+            vis += Emoji.CHECK if direction else Emoji.CROSS
         return vis
     redis = kwargs.get('redis')
     active_dungeon = kwargs.get('active_dungeon')

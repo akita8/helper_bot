@@ -2,8 +2,7 @@ import asyncio
 import functools
 import logging
 
-from utils import Config, ErrorReply
-
+from .settings import BotConfig, ErrorReply
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +14,11 @@ def restricted(redis):
             match = args[0] if len(args) == 1 else args[1]
             cb_query = args[0] if len(args) == 2 else None
             sender = chat.sender['username']
-            if sender == Config.NAME:
+            if sender == BotConfig.NAME:
                 return await func(chat, match=match, redis=redis, cb_query=cb_query)
             command = chat.message['text']
             base_info = {'username': sender}
-            for g in Config.ALLOWED_GROUPS:
+            for g in BotConfig.ALLOWED_GROUPS:
                 info = {**base_info, 'group': g, 'args': command.split(' ')[1:]}
                 is_group = chat.is_group() or chat.type == 'supergroup'
                 if (is_group and g in chat.message['chat']['title']) or await redis.sismember(g, sender):
