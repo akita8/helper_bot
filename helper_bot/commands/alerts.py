@@ -1,4 +1,4 @@
-from utils import ErrorReply
+from helper_bot.settings import ErrorReply
 
 
 async def set_alert(chat, **kwargs):

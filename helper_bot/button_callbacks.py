@@ -1,12 +1,12 @@
-from logging import getLogger
 from ast import literal_eval
 from collections import defaultdict
+from logging import getLogger
 
+from .utils import markup_inline_keyboard
+from .settings import Dungeon
 
-from utils import markup_inline_keyboard, Config, stringify_dungeon_room, map_directions
-from commands.riddle_solvers import namesolver
-from commands.dungeon import log_user_action
-
+from .commands.dungeon import log_user_action
+from .commands.riddle_solvers import namesolver
 
 logger = getLogger(__name__)
 
@@ -31,7 +31,7 @@ async def gabbia_choice(chat, **kwargs):
 
 
 async def stats_button_reply_phase1(chat, **_):
-    return await chat.send_text('Di quale tipologia dungeon vuoi le statistiche?', reply_markup=Config.DUNGEON_MARKUP)
+    return await chat.send_text('Di quale tipologia dungeon vuoi le statistiche?', reply_markup=Dungeon.MARKUP)
 
 
 async def stats_choice_phase1(chat, **kwargs):
@@ -87,10 +87,10 @@ async def map_next(chat, **kwargs):
             end = len(dungeon_map)
             start = end - 5
         dungeon_map = dungeon_map[start:end]
-    markup = map_directions(dungeon, start, end, json=False)
+    markup = Dungeon.map_directions(dungeon, start, end, json=False)
     printable_map = dungeon + '\n\n'
     for i, level in enumerate(dungeon_map, start):
-        printable_map += stringify_dungeon_room(i+1, *level)
+        printable_map += Dungeon.stringify_room(i+1, *level)
     await chat.edit_text(chat.message.get('message_id'), printable_map, parse_mode='Markdown')
     await chat.edit_reply_markup(chat.message.get('message_id'), markup)
 

@@ -1,11 +1,11 @@
-from collections import defaultdict
 from ast import literal_eval
-from logging import getLogger
+from collections import defaultdict
 from datetime import timedelta
+from logging import getLogger
 
-from utils import Config, SolverData, stringify_dungeon_room
-from deco import periodic, setup_coro
+from .decorators import periodic, setup_coro
 
+from helper_bot.settings import SolverData, Dungeon, Url, BotConfig
 
 logger = getLogger(__name__)
 
@@ -13,7 +13,7 @@ logger = getLogger(__name__)
 @setup_coro
 @periodic(30)
 async def update_sales(bot, redis):
-    async with bot.session.get(Config.SHOPS_URL) as s:
+    async with bot.session.get(Url.SHOPS) as s:
         sales = await s.json()
     for item in sales['res']:
         key = f"sale:{item.get('item_id')}:{item.get('code')}"
@@ -31,7 +31,7 @@ async def send_alert(redis):
 @setup_coro
 @periodic(3600*12)
 async def update_items_name(bot, redis):
-    async with bot.session.get(Config.ITEMS_URL) as s:
+    async with bot.session.get(Url.ITEMS) as s:
         raw_items = await s.json()
     items = {item.get('name'): f"{item.get('id')},{item.get('value')}" for item in raw_items['res']}
     await redis.hmset_dict('items', items)
@@ -56,9 +56,9 @@ async def update_items_name(bot, redis):
 @setup_coro
 @periodic(3600)
 async def update_group_members(bot, redis):
-    for group in Config.ALLOWED_GROUPS:
+    for group in BotConfig.ALLOWED_GROUPS:
         await redis.delete(group)
-        async with bot.session.get(Config.GROUP_URL+group) as s:
+        async with bot.session.get(Url.GROUP + group) as s:
             group_members = await s.json()
         for member in group_members['res']:
             await redis.sadd(group, member['nickname'])
@@ -90,12 +90,12 @@ async def build_maps(bot, redis):
             reply = ''
             for i, entry in enumerate(entries):
                 event = entry[1]
-                if event in Config.DUNGEONS_ROOMS or 'mostro' in event:
-                    if i >= 2 and entries[i - 1][1] in Config.DUNGEONS_DIRECTIONS:
+                if event in Dungeon.ROOMS or 'mostro' in event:
+                    if i >= 2 and entries[i - 1][1] in Dungeon.DIRECTIONS:
                         try:
                             number = int(entries[i - 2][1])
                             direction_emoji = entries[i - 1][1]
-                            direction = Config.DUNGEONS_DIRECTIONS[direction_emoji]
+                            direction = Dungeon.DIRECTIONS[direction_emoji]
                             dungeon_map[number - 1][direction] = event
                             processed += [i, i-2, i-1]
                             reply += f'Hai aggiunto *{event}* alla stanza numero {number} direzione {direction_emoji}\n'
@@ -111,7 +111,7 @@ async def build_maps(bot, redis):
                     await redis.hset(user, 'position', new_position)
                     if any(next_room):
                         await private_chat.send_text(
-                            stringify_dungeon_room(new_position, *next_room),
+                            Dungeon.stringify_room(new_position, *next_room),
                             parse_mode='Markdown')
             not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
             dungeon_ttl = await redis.ttl(key)

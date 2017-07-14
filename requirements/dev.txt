@@ -1,0 +1,6 @@
+-r base.txt
+ipython
+pytest
+pytest-asyncio
+coverage
+pytest-cov
