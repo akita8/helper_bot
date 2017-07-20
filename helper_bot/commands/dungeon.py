@@ -164,7 +164,7 @@ async def map_todo(chat, **kwargs):
     def completion_visualization(level, num):
         vis = f"{num if len(num)==2 else '0'+num}. "
         for direction in level:
-            vis += Emoji.CHECK if direction else Emoji.CROSS
+            vis += Dungeon.EMOJIS.get(direction)
         return vis
     redis = kwargs.get('redis')
     active_dungeon = kwargs.get('active_dungeon')
@@ -177,6 +177,14 @@ async def map_todo(chat, **kwargs):
 
 @must_be_forwarded_message
 async def set_expire_date(chat, **kwargs):
-    pass
-
-
+    # TODO not working (problem in the regex)
+    try:
+        redis = kwargs.get('redis')
+        message = chat.message['text'].split('\n')
+        dungeon_name = message[0]
+        raw_deadline = message[3].split(' ')
+        dungeon_deadline = f'{raw_deadline[2]}-{raw_deadline[4]}'
+        await redis.hset('dungeon_deadlines', dungeon_name, dungeon_deadline)
+        await chat.reply(f'Ok ho impostato {dungeon_deadline} per {dungeon_name} come data di crollo')
+    except IndexError:
+        return

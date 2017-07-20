@@ -19,7 +19,7 @@ from helper_bot.settings import BotConfig, Emoji, Dungeon, SolverData
 
 logging.basicConfig(
     format='%(asctime)s %(name)-12s %(levelname)-8s %(funcName)s:%(message)s',
-    level=logging.INFO)
+    level=logging.DEBUG)
 logger = logging.getLogger('bot')
 
 
@@ -63,14 +63,15 @@ def create_bot(redis):
         (get_current_dungeon, r'^/dungeon'),
         (trade_dungeon, r'^/scambio'),
         (expire_dungeon, r'^/cancelladg'),
-        (map_todo, r'^/todo')
+        (map_todo, r'^/todo'),
+        # (set_expire_date, r'')
         # (set_alert, r'^/setalert'),
         # (unset_alert, r'^/unsetalert'),
         # (show_alerts, r'^/showalerts'),
     ]
 
     if SolverData.check():
-        commands += (wordsolver, r'^Sul portone del rifugio')
+        commands += [(wordsolver, r'^Sul portone del rifugio')]
 
     dungeon_commands = [(log_user_action, '^'+string) for string in Dungeon.RE]
     commands += dungeon_commands
