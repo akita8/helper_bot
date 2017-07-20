@@ -19,7 +19,7 @@ from helper_bot.settings import BotConfig, Emoji, Dungeon, SolverData
 
 logging.basicConfig(
     format='%(asctime)s %(name)-12s %(levelname)-8s %(funcName)s:%(message)s',
-    level=logging.DEBUG)
+    level=logging.INFO)
 logger = logging.getLogger('bot')
 
 
