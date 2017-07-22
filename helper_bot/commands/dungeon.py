@@ -164,7 +164,7 @@ async def map_todo(chat, **kwargs):
     def completion_visualization(level, num):
         vis = f"{num if len(num)==2 else '0'+num}. "
         for direction in level:
-            vis += Dungeon.EMOJIS.get(direction)
+            vis += Dungeon.EMOJIS.get(direction) or Dungeon.EMOJIS.get('mostro')
         return vis
     redis = kwargs.get('redis')
     active_dungeon = kwargs.get('active_dungeon')
