@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 
 from helper_bot.decorators import must_be_forwarded_message, must_have_active_dungeon, strict_args_num
 
-from helper_bot.settings import Emoji, ErrorReply, Dungeon
+from helper_bot.settings import ErrorReply, Dungeon
 from helper_bot.utils import markup_inline_keyboard, is_number
 
 
@@ -109,9 +109,9 @@ async def get_map(chat, **kwargs):
     if not map_string:
         return await chat.reply('La mappa del dungeon che hai richiesto non esiste!')
     dungeon_map = literal_eval(map_string)[:5]
-    printable_map = \
-        active_dungeon + '\n\n' + ''.join([Dungeon.stringify_room(i, *level) for i, level in enumerate(dungeon_map, 1)])
-    markup = Dungeon.map_directions(active_dungeon, 0, 5)
+    printable_map = active_dungeon + '\n\n' + ''.join([
+        Dungeon.stringify_room(i, *level, kwargs.get('info').get('emojis')) for i, level in enumerate(dungeon_map, 1)])
+    markup = Dungeon.map_directions(active_dungeon, 0, 5, kwargs.get('info').get('username'))
     return await chat.send_text(printable_map, reply_markup=markup, parse_mode='Markdown')
 
 
@@ -131,7 +131,10 @@ async def next_room(chat, **kwargs):
         return await chat.reply('Errore!\n La stanza richiesta è maggiore ')
     dungeon_map = literal_eval(await redis.get(f"map:{active_dungeon}"))
     await redis.hset(sender, 'position', position)
-    return await chat.reply(Dungeon.stringify_room(position, *dungeon_map[position-1]), parse_mode='Markdown')
+    return await chat.reply(Dungeon.stringify_room(
+        position,
+        *dungeon_map[position-1],
+        info.get('emojis')), parse_mode='Markdown')
 
 
 @must_have_active_dungeon
@@ -161,17 +164,17 @@ async def expire_dungeon(chat, **kwargs):
 
 @must_have_active_dungeon
 async def map_todo(chat, **kwargs):
-    def completion_visualization(level, num):
+    def completion_visualization(level, num, emojis):
         vis = f"{num if len(num)==2 else '0'+num}. "
         for direction in level:
-            vis += Dungeon.EMOJIS.get(direction) or Dungeon.EMOJIS.get('mostro')
+            vis += emojis.get(direction) or emojis.get('mostro')
         return vis
     redis = kwargs.get('redis')
     active_dungeon = kwargs.get('active_dungeon')
     dungeon_map = literal_eval(await redis.get(f"map:{active_dungeon}"))
-    printable_map = \
-        active_dungeon + '\n\n' + \
-        '\n'.join([completion_visualization(level, str(i+1)) for i, level in enumerate(dungeon_map)])
+    printable_map = active_dungeon + '\n\n' + '\n'.join([
+        completion_visualization(level, str(i+1), kwargs.get('info').get('emojis'))
+        for i, level in enumerate(dungeon_map)])
     await chat.reply(printable_map)
 
 
@@ -188,3 +191,20 @@ async def set_expire_date(chat, **kwargs):
         await chat.reply(f'Ok ho impostato {dungeon_deadline} per {dungeon_name} come data di crollo')
     except IndexError:
         return
+
+
+async def get_custom_emojis(chat, **kwargs):
+    redis = kwargs.get('redis')
+    user_emojis = await redis.hgetall(f"custom_emojis:{kwargs.get('info').get('username')}")
+    user_emojis = Dungeon.EMOJIS if not user_emojis else user_emojis
+    emojis = ''.join([f"{k}:{v}\n" for k, v in user_emojis.items()])
+    await chat.send_text("#emojis mappa\n" + emojis)
+    await chat.reply(
+        "Queste sono le tue emoji settate se le vuoi cambiare mandami il messaggio sopra con le emoji cambiate")
+
+
+async def set_custom_emojis(chat, **kwargs):
+    redis = kwargs.get('redis')
+    message = [line.split(':') for line in chat.message['text'].split('\n')[1:]]
+    await redis.hmset_dict(f"custom_emojis:{kwargs.get('info').get('username')}", {k: v for k, v in message})
+    await chat.reply('Hai cambiato le emoji!')

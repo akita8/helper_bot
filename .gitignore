@@ -5,5 +5,4 @@ env
 *.out
 __pycache__
 *.pyc
-ITA5-12.txt
 .cache

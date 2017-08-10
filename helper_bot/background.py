@@ -5,52 +5,27 @@ from logging import getLogger
 
 from .decorators import periodic, setup_coro
 
-from helper_bot.settings import SolverData, Dungeon, Url, BotConfig
+from helper_bot.settings import Dungeon, Url, BotConfig
 
 logger = getLogger(__name__)
 
 
-@setup_coro
-@periodic(30)
-async def update_sales(bot, redis):
-    async with bot.session.get(Url.SHOPS) as s:
-        sales = await s.json()
-    for item in sales['res']:
-        key = f"sale:{item.get('item_id')}:{item.get('code')}"
-        value = f"{item.get('price')},{item.get('quantity')}"
-        await redis.setex(key, 15*60, value)
+# @setup_coro
+# @periodic(30)
+# async def update_sales(bot, redis):
+#     async with bot.session.get(Url.SHOPS) as s:
+#         sales = await s.json()
+#     for item in sales['res']:
+#         key = f"sale:{item.get('item_id')}:{item.get('code')}"
+#         value = f"{item.get('price')},{item.get('quantity')}"
+#         await redis.setex(key, 15*60, value)
 
 
-@setup_coro
-@periodic(15)
-async def send_alert(redis):
-    async for _ in redis.iscan(match='sale:*'):
-        pass
-
-
-@setup_coro
-@periodic(3600*12)
-async def update_items_name(bot, redis):
-    async with bot.session.get(Url.ITEMS) as s:
-        raw_items = await s.json()
-    items = {item.get('name'): f"{item.get('id')},{item.get('value')}" for item in raw_items['res']}
-    await redis.hmset_dict('items', items)
-    ris = {}
-    items_names = list(items.keys()) + SolverData.HIDDEN_ITEMS_NAMES
-    for name in items_names:
-        incomplete_name = ''
-        for i, char in enumerate(name):
-            if i == 0 or i == len(name)-1:
-                incomplete_name += char
-            elif char == ' ':
-                incomplete_name += '-'
-            else:
-                incomplete_name += '_'
-        if incomplete_name not in ris:
-            ris[incomplete_name] = name
-        else:
-            ris[incomplete_name] += ',' + name
-    await redis.hmset_dict('namesolver', ris)
+# @setup_coro
+# @periodic(15)
+# async def send_alert(redis):
+#     async for _ in redis.iscan(match='sale:*'):
+#         pass
 
 
 @setup_coro

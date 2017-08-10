@@ -35,6 +35,8 @@ async def lista_botta(chat, **kwargs):
         formatted = f'{boss} {deadline}\n\n'
         for username, status in rv.items():
             em = Emoji.CHECK if status == 'ok' else status if status else Emoji.CROSS
+            if 'vacanza' in status:
+                em = status
             if em.encode('utf-8') not in Emoji.BYTES:
                 warning = emoji.emojize(':warning:', use_aliases=True)
                 formatted += warning + f' *{username}*: {em}\n'
@@ -93,3 +95,8 @@ async def botta(chat, **kwargs):
         await chat.send_text('KILL KILL KILL')
 
 
+async def vacation(chat, **kwargs):
+    redis = kwargs.get('redis')
+    info = kwargs.get('info')
+    await redis.hset(f"boss:{info.get('group')}", info.get('username'), 'vacanza ' + Emoji.VACATION)
+    await chat.reply('OK fino a quando non darai nuovamente una botta sarai segnato assente!')

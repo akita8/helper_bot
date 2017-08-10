@@ -5,29 +5,7 @@ from logging import getLogger
 from .utils import markup_inline_keyboard
 from .settings import Dungeon
 
-from .commands.dungeon import log_user_action
-from .commands.riddle_solvers import namesolver
-
 logger = getLogger(__name__)
-
-
-async def gabbia_buttons_reply(chat, **_):
-    markup = markup_inline_keyboard([
-        [('risolvi', 'gabbiaclick-solver'),
-         ('mappa', f"gabbiaclick-{chat.message.get('forward_date')}")]])
-    await chat.send_text(chat.message['text'], reply_markup=markup)
-
-
-async def gabbia_choice(chat, **kwargs):
-    match = kwargs.get('match')
-    if match.group(1) == 'solver':
-        await chat.edit_text(chat.message.get('message_id'), 'Ok adesso lo risolvo!')
-        await namesolver(chat, **kwargs)
-    else:
-        chat.message['forward_date'] = match.group(1)
-        await chat.edit_text(chat.message.get('message_id'), 'Ok lo ho aggiunto al tuo dungeon!')
-        kwargs['info'] = {'username': chat.message['chat'].get('username'), 'dungeon_room': 'gabbia'}
-        await log_user_action(chat, **kwargs)
 
 
 async def stats_button_reply_phase1(chat, **_):
@@ -60,14 +38,15 @@ async def stats_choice_phase2(chat, **kwargs):
     dungeon_deadline = await redis.hget('dungeon_deadlines', f'{dungeon} {num}')
     percent_completed = round(((tot_rooms - (counter.get('') or 0)) / tot_rooms) * 100, 2)
     reply = f"{dungeon} {num}\nPercentuale completamento {percent_completed}%\nMonete: {counter.get('monete') or 0}\n" \
-            f"Spade: {counter.get('spada') or 0}\nAsce: {counter.get('ascia') or 0}\nAiuta: {counter.get('aiuta') or 0}\n" \
-            f"Mattonelle: {counter.get('mattonella') or 0}\nStanze vuote: {counter.get('stanza vuota') or 0}\n" \
+            f"Spade: {counter.get('spada') or 0}\nAsce: {counter.get('ascia') or 0}\n" \
+            f"Aiuta: {counter.get('aiuta') or 0}\nMattonelle: {counter.get('mattonella') or 0}\n" \
+            f"Stanze vuote: {counter.get('stanza vuota') or 0}\n" \
             f"Fontana: {counter.get('fontana') or 0}\nData Crollo: {dungeon_deadline or 'non definita'}"
     await chat.send_text(reply)
 
 
 async def map_next(chat, **kwargs):
-    dungeon, start, end, scroll_direction = kwargs.get('match').group(1).split(':')
+    dungeon, start, end, scroll_direction, user = kwargs.get('match').group(1).split(':')
     start, end = int(start), int(end)
     redis = kwargs.get('redis')
     try:
@@ -89,10 +68,11 @@ async def map_next(chat, **kwargs):
             end = len(dungeon_map)
             start = end - 5
         dungeon_map = dungeon_map[start:end]
-    markup = Dungeon.map_directions(dungeon, start, end, json=False)
+    markup = Dungeon.map_directions(dungeon, start, end, user, json=False)
     printable_map = dungeon + '\n\n'
     for i, level in enumerate(dungeon_map, start):
-        printable_map += Dungeon.stringify_room(i+1, *level)
+        printable_map += Dungeon.stringify_room(
+            i+1, *level, await redis.hgetall(f"custom_emojis:{user}") or Dungeon.EMOJIS)
     await chat.edit_text(chat.message.get('message_id'), printable_map, parse_mode='Markdown')
     await chat.edit_reply_markup(chat.message.get('message_id'), markup)
 
@@ -120,4 +100,4 @@ async def confirm_trade(chat, **kwargs):
         await redis.hmset_dict(receiver, {'active_dungeon': dungeon, 'position': position})
         await chat.edit_text(chat.message.get('message_id'), f'Sei stato aggiunto al dungeon {dungeon}')
     else:
-        await chat.edit_text( chat.message.get('message_id'), 'Ok non sei stato aggiunto!')
+        await chat.edit_text(chat.message.get('message_id'), 'Ok non sei stato aggiunto!')

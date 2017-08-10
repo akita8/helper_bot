@@ -20,39 +20,6 @@ def load_user_config():
     return config['BOT']['allowed groups'].split(','), config['BOT']['name'], config['BOT']['token']
 
 
-def load_solvers_words():
-    with open('hidden_items.txt') as f:
-        hidden = f.read().split('\n')
-    try:
-        with open('ITA5-12.txt', encoding='ISO-8859-1') as f:
-            data = f.read().split('\n')
-            data.pop(-1)
-    except FileNotFoundError:
-        logger.error('dictionary file NOT FOUND')
-        return None, None
-
-    indexed_data = {}
-    for word in data:
-        l = len(word)
-        first_letter = word[0]
-        if l not in indexed_data:
-            indexed_data[l] = ([word], {})
-        else:
-            indexed_data[l][0].append(word)
-        if first_letter not in indexed_data[l][1]:
-            indexed_data[l][1][first_letter] = len(indexed_data[l][0]) - 1
-    return indexed_data, hidden
-
-
-class SolverData:
-
-    WORDS_ITA, HIDDEN_ITEMS_NAMES = load_solvers_words()
-
-    @classmethod
-    def check(cls):
-        return all((cls.WORDS_ITA, cls.HIDDEN_ITEMS_NAMES))
-
-
 class BotConfig:
 
     ALLOWED_GROUPS, NAME, TOKEN = load_user_config()
@@ -86,6 +53,7 @@ class Emoji:
     NEGATIVE = emoji.emojize(':red_circle:', use_aliases=True)
     CROSS = emoji.emojize(':x:', use_aliases=True)
     CHECK = emoji.emojize(':white_check_mark:', use_aliases=True)
+    VACATION = emoji.emojize(':calendar:', use_aliases=True)
 
 
 class Dungeon:
@@ -115,6 +83,7 @@ class Dungeon:
         "Percorrendo un corridoio scivoli su una pozzanghera": 'trappola',
         "Vedi un Nano della terra di Grumpi e ti chiedi": 'trappola',
         "Uno strano pulsante rosso come un pomodoro ti incuriosisce": 'trappola',
+        "In questa stanza non noti nessuna porta, al loro posto 3 incisioni con un pulsante ciascuna": 'incisioni',
     }
     EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
@@ -139,10 +108,10 @@ class Dungeon:
         'spada': emoji.emojize(':dollar:', use_aliases=True),
         'predone': Emoji.NEUTRAL,
         'trappola': Emoji.NEGATIVE,
-        'gabbia': Emoji.NEUTRAL,
+        'incisioni': Emoji.NEGATIVE,
         '': emoji.emojize(':question:', use_aliases=True)
     }
-    ROOMS = set(RE.values()).union({'gabbia'})
+    ROOMS = set(RE.values())
     LENGTH = {
         "Il Burrone Oscuro": 10,
         "La Grotta Infestata": 15,
@@ -164,16 +133,17 @@ class Dungeon:
         return Dungeon.LENGTH[dungeon_name]
 
     @staticmethod
-    def stringify_room(i, left, up, right):
+    def stringify_room(i, left, up, right, emojis):
         def room_emoji(room):
-            return Dungeon.EMOJIS.get(room) if 'mostro' not in room else Dungeon.EMOJIS.get('mostro')
+            return emojis.get(room) if 'mostro' not in room else emojis.get('mostro')
         return f"---*Stanza*: *{i}*---\n{Emoji.ARROW_LEFT} {left} {room_emoji(left)}\n" \
                f"{Emoji.ARROW_UP} {up} {room_emoji(up)}\n" \
                f"{Emoji.ARROW_RIGHT} {right} {room_emoji(right)}\n"
 
     @staticmethod
-    def map_directions(dungeon, start, end, json=True):
+    def map_directions(dungeon, start, end, user, json=True):
         return markup_inline_keyboard(
-            [[(emoji.emojize(":arrow_double_up:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:up")],
-             [(emoji.emojize(":arrow_double_down:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:down")]],
+            [[(emoji.emojize(":arrow_double_up:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:up:{user}")],
+             [(emoji.emojize(
+                 ":arrow_double_down:", use_aliases=True), f"mapclick-{dungeon}:{start}:{end}:down:{user}")]],
             json=json)
