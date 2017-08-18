@@ -57,10 +57,10 @@ async def log_user_action(chat, **kwargs):
     await redis.hsetnx(sender, 'user_id', chat.message['chat'].get('id'))
     dungeon_room = info.get('dungeon_room')
     dungeon_room = dungeon_room if dungeon_room else Dungeon.RE.get(match.group(0))
-    if dungeon_room == 'mostro':
+    if not dungeon_room:
         level_loc = chat.message['entities'][1]
         level = chat.message['text'][level_loc.get('offset'):level_loc.get('offset') + level_loc.get('length')]
-        dungeon_room += ' ' + level
+        dungeon_room = 'mostro ' + level
     time = str(int(chat.message.get('forward_date')) + 1)
     return await redis.append(f"dungeon:{active_dungeon}", f"{sender},{time},{dungeon_room}:")
 

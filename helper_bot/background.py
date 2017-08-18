@@ -86,7 +86,7 @@ async def build_maps(bot, redis):
                     await redis.hset(user, 'position', new_position)
                     if any(next_room):
                         await private_chat.send_text(
-                            Dungeon.stringify_room(new_position, *next_room),
+                            Dungeon.stringify_room(new_position, *next_room, await redis.hgetall(f"custom_emojis:{user}") or Dungeon.EMOJIS),
                             parse_mode='Markdown')
             not_processed = [','.join([user] + entry) for i, entry in enumerate(entries) if i not in processed]
             dungeon_ttl = await redis.ttl(key)

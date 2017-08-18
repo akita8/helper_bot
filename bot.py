@@ -68,7 +68,7 @@ def create_bot(redis):
         # (set_expire_date, r'')
     ]
 
-    dungeon_commands = [(log_user_action, '^'+string) for string in Dungeon.RE]
+    dungeon_commands = [(log_user_action, '^' +  string) for string in Dungeon.RE]
     commands += dungeon_commands
 
     callbacks = [

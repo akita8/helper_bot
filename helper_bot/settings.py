@@ -58,7 +58,7 @@ class Emoji:
 
 class Dungeon:
     RE = {
-        'Incontri un': 'mostro',
+        "(^L'aria si fa più pesante.|^Incontri un)": 'mostro',
         'Aprendo la porta ti ritrovi in un ambiente aperto,': 'vecchia',
         'Oltrepassando la porta ti trovi davanti ad altre due porte': 'due porte',
         "Appena entrato nella stanza vedi nell'angolo": 'aiuta',
