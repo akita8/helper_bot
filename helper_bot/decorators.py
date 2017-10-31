@@ -21,7 +21,7 @@ def restricted(redis):
             for g in BotConfig.ALLOWED_GROUPS:
                 info = {**base_info, 'group': g, 'args': command.split(' ')[1:]}
                 is_group = chat.is_group() or chat.type == 'supergroup'
-                if (is_group and g in chat.message['chat']['title']) or await redis.sismember(g, sender) or sender == 'Firemind79':
+                if (is_group and g in chat.message['chat']['title']) or await redis.sismember(g, sender):
                     logger.info(f"user->{sender} {chat.type}->{g} command->{func.__name__}")
                     return await func(chat, match=match, info=info, redis=redis, cb_query=cb_query)
             logger.info(f"{chat.sender.get('username')} tried to use the bot!")

@@ -38,7 +38,7 @@ class ErrorReply:
 
 class Url:
     ITEMS = 'http://fenixweb.net:3300/api/v1/items'
-    GROUP = 'http://fenixweb.net:3300/api/v1/team/'
+    GROUP = 'http://fenixweb.net:3300/api/v2/oI65t30vbkwBisPw6668/team/'
     SHOPS = 'http://fenixweb.net:3300/api/v1/updatedshops/1'
 
 
@@ -122,6 +122,7 @@ class Dungeon:
         "La Foresta Maledetta": 45,
         "La Vetta delle Anime": 50,
         "Il Lago Evanescente": 55,
+        "Il Labirinto Spettrale": 60,
     }
     ACRONYMS = {''.join([w[0].lower() for w in key.split(' ')][1:]): key for key in LENGTH}
     DIRECTIONS = {Emoji.ARROW_LEFT: 0, Emoji.ARROW_UP: 1, Emoji.ARROW_RIGHT: 2}

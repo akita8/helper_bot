@@ -35,13 +35,13 @@ async def stats_choice_phase2(chat, **kwargs):
         for room in level:
             counter[room] += 1
     tot_rooms = len(dungeon_map) * 3
-    dungeon_deadline = await redis.hget('dungeon_deadlines', f'{dungeon} {num}')
+    # dungeon_deadline = await redis.hget('dungeon_deadlines', f'{dungeon} {num}')
     percent_completed = round(((tot_rooms - (counter.get('') or 0)) / tot_rooms) * 100, 2)
     reply = f"{dungeon} {num}\nPercentuale completamento {percent_completed}%\nMonete: {counter.get('monete') or 0}\n" \
             f"Spade: {counter.get('spada') or 0}\nAsce: {counter.get('ascia') or 0}\n" \
             f"Aiuta: {counter.get('aiuta') or 0}\nMattonelle: {counter.get('mattonella') or 0}\n" \
             f"Stanze vuote: {counter.get('stanza vuota') or 0}\n" \
-            f"Fontana: {counter.get('fontana') or 0}\nData Crollo: {dungeon_deadline or 'non definita'}"
+            f"Fontana: {counter.get('fontana') or 0}\nIncisioni: {counter.get('incisioni') or 0}"
     await chat.send_text(reply)
 
 

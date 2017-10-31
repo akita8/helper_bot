@@ -13,7 +13,7 @@ async def set_boss(chat, **kwargs):
     key = f"boss:{group}"
     msg = chat.message['text'].split(' ')
     if len(msg) != 3 or msg[1].lower() not in ('titano', 'fenice', 'phoenix'):
-        return await chat.reply(ErrorReply.INCORRECT_SYNTAX.format('/setboss titano (o fenice) deadline'))
+        return await chat.reply(ErrorReply.INCORRECT_SYNTAX.format('/setboss titano (o fenice) dd/mm/yyyy-hh:mm\nNota: @AlbLCV2 è una rompipalle.'))
     if not is_time(msg[2], '%d/%m/%Y-%H:%M'):
         return await chat.reply(ErrorReply.INVALID_TIME + ' formato corretto: giorno/mese/anno-ora:minuti')
     group_members = await redis.smembers(group)
