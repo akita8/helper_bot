@@ -84,6 +84,9 @@ class Dungeon:
         "Vedi un Nano della terra di Grumpi e ti chiedi": 'trappola',
         "Uno strano pulsante rosso come un pomodoro ti incuriosisce": 'trappola',
         "In questa stanza non noti nessuna porta, al loro posto 3 incisioni con un pulsante ciascuna": 'incisioni',
+        "Ehy amico lo sai chi sono": 'mappatore distratto',
+        "Al centro della stanza vedi un signore anziano con gli occhi sbarrati": 'vecchio cieco',
+        "Entri in una stanza con un piccolo specchio al centro": 'specchio',
     }
     EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
@@ -109,7 +112,10 @@ class Dungeon:
         'predone': Emoji.NEUTRAL,
         'trappola': Emoji.NEGATIVE,
         'incisioni': Emoji.NEGATIVE,
-        '': emoji.emojize(':question:', use_aliases=True)
+        '': emoji.emojize(':question:', use_aliases=True),
+        'vecchio cieco': Emoji.NEUTRAL,
+        'minatore distratto': Emoji.NEGATIVE,
+        'specchio': Emoji.NEUTRAL,
     }
     ROOMS = set(RE.values())
     LENGTH = {

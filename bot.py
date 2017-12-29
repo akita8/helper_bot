@@ -92,7 +92,7 @@ def create_tasks(loop, redis):
 
     coroutines = [
         setup_coro(bot.loop())(),
-        update_group_members(bot, redis),
+        #update_group_members(bot, redis),
         build_maps(bot, redis)]
 
     for coro in coroutines:
