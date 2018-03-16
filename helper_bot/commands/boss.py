@@ -39,13 +39,13 @@ async def lista_botta(chat, **kwargs):
                 em = status
             if em.encode('utf-8') not in Emoji.BYTES:
                 warning = emoji.emojize(':warning:', use_aliases=True)
-                formatted += warning + f' *{username}*: {em}\n'
+                formatted += warning + f' {username}: {em}\n'
             else:
                 line = f'{username}: {em}\n'
                 if '/listabottatag' in chat.message['text']:
                     line = '@' + line if not status else line
                 formatted += line if em != Emoji.CROSS else emoji.emojize(':exclamation:', use_aliases=True) + line
-        return await chat.send_text(formatted, parse_mode='Markdown')
+        return await chat.send_text(formatted)
     else:
         chat.reply(f'Errore!\nNon ho trovato boss impostati --> /setboss.')
 

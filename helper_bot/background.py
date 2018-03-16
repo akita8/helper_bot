@@ -32,11 +32,15 @@ logger = getLogger(__name__)
 @periodic(3600)
 async def update_group_members(bot, redis):
     for group in BotConfig.ALLOWED_GROUPS:
-        await redis.delete(group)
         async with bot.session.get(Url.GROUP + group) as s:
             group_members = await s.json()
-        for member in group_members['res']:
-            await redis.sadd(group, member['nickname'])
+        try:
+            members = group_members['res']
+            await redis.delete(group)
+            for member in members:
+                await redis.sadd(group, member['nickname'])
+        except KeyError:
+            logger.warning('update members fallito')
 
 
 @setup_coro
@@ -53,10 +57,13 @@ async def build_maps(bot, redis):
             continue
         dungeon_string = await redis.get(key)
         dungeon = []
-        for line in dungeon_string.split(':')[:-1]:
-            line = line.split(',')
-            if line not in dungeon:
-                dungeon.append(line)
+        try:
+            for line in dungeon_string.split(':')[:-1]:
+                line = line.split(',')
+                if line not in dungeon:
+                    dungeon.append(line)
+        except AttributeError:
+            continue
         ordered_dungeon = defaultdict(list)
         for entry in sorted(dungeon, key=lambda x: x[1]):
             ordered_dungeon[entry[0]].append(entry[1:])

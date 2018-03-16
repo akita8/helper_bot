@@ -87,6 +87,7 @@ class Dungeon:
         "Ehy amico lo sai chi sono": 'mappatore distratto',
         "Al centro della stanza vedi un signore anziano con gli occhi sbarrati": 'vecchio cieco',
         "Entri in una stanza con un piccolo specchio al centro": 'specchio',
+        "Entri nella stanza e incontri l'Alchimista dell'Ovest": 'alchimista',
     }
     EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
@@ -116,6 +117,7 @@ class Dungeon:
         'vecchio cieco': Emoji.NEUTRAL,
         'minatore distratto': Emoji.NEGATIVE,
         'specchio': Emoji.NEUTRAL,
+        'alchimista': Emoji.NEUTRAL,
     }
     ROOMS = set(RE.values())
     LENGTH = {
