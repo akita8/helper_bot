@@ -131,6 +131,7 @@ class Dungeon:
         "La Vetta delle Anime": 50,
         "Il Lago Evanescente": 55,
         "Il Labirinto Spettrale": 60,
+        "La Vallata Impervia": 75
     }
     ACRONYMS = {''.join([w[0].lower() for w in key.split(' ')][1:]): key for key in LENGTH}
     DIRECTIONS = {Emoji.ARROW_LEFT: 0, Emoji.ARROW_UP: 1, Emoji.ARROW_RIGHT: 2}
