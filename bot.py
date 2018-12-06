@@ -3,7 +3,9 @@ import functools
 import logging
 import os
 import signal
+import time
 
+import aiohttp
 import aioredis
 import aiotg
 
@@ -87,11 +89,20 @@ def create_bot(redis):
     return bot
 
 
+async def bot_restarter(bot):
+    while True:
+        try:
+       	    await bot.loop()
+        except aiohttp.client_exceptions.ServerDisconnectedError:
+            logger.warning('bot disconnected retrying 30 sec')
+            time.sleep(30)
+            bot.stop() 
+
 def create_tasks(loop, redis):
     bot = create_bot(redis)
 
     coroutines = [
-        setup_coro(bot.loop())(),
+        setup_coro(bot_restarter(bot))(),
         update_group_members(bot, redis),
         build_maps(bot, redis)]
 

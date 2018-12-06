@@ -66,7 +66,7 @@ class Dungeon:
         "Un cartello con un punto esclamativo ti preoccupa, al centro della stanza": 'ascia',
         "Davanti a te si erge un portale completamente rosso": 'desideri',
         "Appena entrato nella stanza noti subito una strana fontana situata nel centro": 'fontana',
-        "Al centro della stanza ci sono 3 leve": 'leve',
+        "Il corridoio si stringe in un'umida strettoia, sembrerebbe un vicolo cieco!": 'leve',
         "Nella stanza incontri un marinaio con aria furba": 'marinaio',
         "Entri nella stanza e per sbaglio pesti una mattonella leggermente rovinata": 'mattonella',
         "Raggiungi una stanza con un'incisione profonda:": 'meditazione',
@@ -88,6 +88,12 @@ class Dungeon:
         "Al centro della stanza vedi un signore anziano con gli occhi sbarrati": 'vecchio cieco',
         "Entri in una stanza con un piccolo specchio al centro": 'specchio',
         "Entri nella stanza e incontri l'Alchimista dell'Ovest": 'alchimista',
+        "Raggiungi una stanza completamente trasparente": "Cuore e spirito",
+        "Spalancata la porta della stanza vieni sbalzato": "Energia magica",
+        "Sull'angolo della stanza noti un uomo magro con un cappello a forma di Bomba": "Bombarolo",
+        "Entri in una stanza che non ha affatto le sembianze di una stanza": "Mercante draconico",
+        "Questa stanza è strana, scorgi solamente una fessura sul muro": "Stanza strana",
+        "Senti puzza di bruciato, ti accorgi di essere entrato": "esplosivi"
     }
     EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
@@ -118,6 +124,12 @@ class Dungeon:
         'minatore distratto': Emoji.NEGATIVE,
         'specchio': Emoji.NEUTRAL,
         'alchimista': Emoji.NEUTRAL,
+        "Cuore e spirito": Emoji.NEUTRAL,
+        "Energia magica": Emoji.NEUTRAL,
+        "Bombarolo": Emoji.NEUTRAL,
+        "Mercante draconico": Emoji.NEUTRAL,
+        "Stanza strana": Emoji.NEUTRAL,
+        "esplosivi": Emoji.NEUTRAL
     }
     ROOMS = set(RE.values())
     LENGTH = {
