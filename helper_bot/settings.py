@@ -93,7 +93,8 @@ class Dungeon:
         "Sull'angolo della stanza noti un uomo magro con un cappello a forma di Bomba": "Bombarolo",
         "Entri in una stanza che non ha affatto le sembianze di una stanza": "Mercante draconico",
         "Questa stanza è strana, scorgi solamente una fessura sul muro": "Stanza strana",
-        "Senti puzza di bruciato, ti accorgi di essere entrato": "esplosivi"
+        "Senti puzza di bruciato, ti accorgi di essere entrato": "esplosivi",
+        "Entri in una stanza completamente luccicante, quasi accecante": "gioielliere",
     }
     EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
@@ -129,7 +130,8 @@ class Dungeon:
         "Bombarolo": Emoji.NEUTRAL,
         "Mercante draconico": Emoji.NEUTRAL,
         "Stanza strana": Emoji.NEUTRAL,
-        "esplosivi": Emoji.NEUTRAL
+        "esplosivi": Emoji.NEUTRAL,
+        "gioielliere": Emoji.NEUTRAL,
     }
     ROOMS = set(RE.values())
     LENGTH = {
