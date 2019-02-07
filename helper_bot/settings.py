@@ -95,6 +95,12 @@ class Dungeon:
         "Questa stanza è strana, scorgi solamente una fessura sul muro": "Stanza strana",
         "Senti puzza di bruciato, ti accorgi di essere entrato": "esplosivi",
         "Entri in una stanza completamente luccicante, quasi accecante": "gioielliere",
+        "Non fai che un passo, una voce mite ma ferma ti paralizza": "contrabbandiere del coso",
+        "Entrando nella stanza pesti una leva": "maledizione",
+        "Raggiungi una stanza con un cartello con su scritto": "vicolo cieco",
+        "Entri in una stanza che anziché una parete": "burrone",
+        "Hai schivato con destrezza una trappola piazzata sul muro della stanza": "trappola",
+        "Entri in una stanza completamente piena di polvere":"stanza polvere",
     }
     EMOJIS = {
         'mostro': emoji.emojize(':boar:', use_aliases=True),
@@ -132,6 +138,11 @@ class Dungeon:
         "Stanza strana": Emoji.NEUTRAL,
         "esplosivi": Emoji.NEUTRAL,
         "gioielliere": Emoji.NEUTRAL,
+        "contrabbandiere del coso": Emoji.NEUTRAL,
+        "maledizione": Emoji.NEUTRAL,
+        "vicolo cieco": Emoji.NEUTRAL,
+        "burrone": Emoji.NEUTRAL,
+        "stanza polvere": Emoji.NEUTRAL,
     }
     ROOMS = set(RE.values())
     LENGTH = {
