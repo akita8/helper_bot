@@ -67,7 +67,7 @@ class Dungeon:
         "Davanti a te si erge un portale completamente rosso": 'desideri',
         "Appena entrato nella stanza noti subito una strana fontana situata nel centro": 'fontana',
         "Il corridoio si stringe in un'umida strettoia, sembrerebbe un vicolo cieco!": 'leve',
-        "Nella stanza incontri un marinaio con aria furba": 'marinaio',
+        "Nella stanza incontri un marinaio dall'aria furba": 'marinaio',
         "Entri nella stanza e per sbaglio pesti una mattonella leggermente rovinata": 'mattonella',
         "Raggiungi una stanza con un'incisione profonda:": 'meditazione',
         "Nella stanza incontri un viandante": "mercante",
