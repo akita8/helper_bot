@@ -1,4 +1,4 @@
-aiohttp==2.2.3
+aiohttp==3.7.4
 aioredis==0.3.3
 aiotg==0.9.2
 argh==0.26.2
